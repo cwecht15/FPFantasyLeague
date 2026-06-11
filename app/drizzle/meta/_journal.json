@@ -43,6 +43,13 @@
       "when": 1781202617115,
       "tag": "0005_salty_cerebro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781210256964,
+      "tag": "0006_majestic_sue_storm",
+      "breakpoints": true
     }
   ]
 }

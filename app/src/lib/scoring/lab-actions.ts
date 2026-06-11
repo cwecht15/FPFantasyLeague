@@ -37,6 +37,47 @@ export interface LabState {
   scope?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Saved scoring sets: save the current Lab form under a name, or delete one.
+// ---------------------------------------------------------------------------
+
+export async function saveScoringSet(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  if (!user.isSiteAdmin) return;
+
+  const { revalidatePath } = await import("next/cache");
+  const { scoringSets } = await import("@/lib/db/schema");
+  const { sql } = await import("drizzle-orm");
+
+  const name = String(formData.get("setName") ?? "").trim().slice(0, 60);
+  if (!name) return;
+
+  const rules = rulesFromForm(formData);
+  const validated = scoringRulesSchema.safeParse(rules);
+  if (!validated.success) return;
+
+  await db
+    .insert(scoringSets)
+    .values({ name, rules: validated.data, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: scoringSets.name,
+      set: { rules: validated.data, updatedAt: sql`now()` },
+    });
+  revalidatePath("/admin/scoring-lab");
+}
+
+export async function deleteScoringSet(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  if (!user.isSiteAdmin) return;
+
+  const { revalidatePath } = await import("next/cache");
+  const { scoringSets } = await import("@/lib/db/schema");
+  const id = Number(formData.get("setId"));
+  if (!Number.isInteger(id)) return;
+  await db.delete(scoringSets).where(eq(scoringSets.id, id));
+  revalidatePath("/admin/scoring-lab");
+}
+
 export async function runScoringLab(_prev: LabState, formData: FormData): Promise<LabState> {
   const user = await requireUser();
   if (!user.isSiteAdmin) return { error: "Site admin only" };

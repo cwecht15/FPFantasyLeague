@@ -1,24 +1,38 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { playerWeekStats } from "@/lib/db/schema";
+import { playerWeekStats, scoringSets } from "@/lib/db/schema";
 import { ScoringLab } from "@/components/scoring-lab";
-import { LAB_FIELD_GROUPS, QB_FIELD_GROUP } from "@/lib/scoring/lab-form";
+import { deleteScoringSet } from "@/lib/scoring/lab-actions";
+import { groupsFromRules, LAB_FIELD_GROUPS, QB_FIELD_GROUP } from "@/lib/scoring/lab-form";
 
 export const metadata = { title: "Scoring Lab — FP Fantasy League" };
 
-export default async function ScoringLabPage() {
+export default async function ScoringLabPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ set?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (!session.user.isSiteAdmin) redirect("/leagues");
+  const { set: setParam } = await searchParams;
 
   const seasonRows = await db
     .selectDistinct({ season: playerWeekStats.season })
     .from(playerWeekStats)
     .orderBy(sql`season`);
   const seasons = seasonRows.map((r) => r.season);
+
+  const sets = await db.select().from(scoringSets).orderBy(desc(scoringSets.updatedAt));
+  const selected = setParam ? (sets.find((s) => s.id === Number(setParam)) ?? null) : null;
+
+  const prefill = selected
+    ? groupsFromRules(selected.rules)
+    : { groups: LAB_FIELD_GROUPS, qbGroup: QB_FIELD_GROUP, qbEnabled: true };
 
   return (
     <div>
@@ -32,13 +46,62 @@ export default async function ScoringLabPage() {
           </div>
         </div>
       </header>
-      <div>
-        {seasons.length === 0 ? (
-          <p className="text-muted">
-            No stat data loaded yet — run the scoring pipeline first.
+
+      <div className="panel mb-4">
+        <div className="ptitle">
+          <span className="t">Saved scoring sets</span>
+          {selected && <span className="m">loaded: {selected.name}</span>}
+        </div>
+        {sets.length === 0 ? (
+          <p className="empty">
+            None yet — tune the rules below, give the set a name, and hit Save set.
           </p>
         ) : (
-          <ScoringLab seasons={seasons} fieldGroups={LAB_FIELD_GROUPS} qbGroup={QB_FIELD_GROUP} />
+          <div>
+            {sets.map((s) => (
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-2.5 text-[13.5px] last:border-b-0"
+                style={selected?.id === s.id ? { background: "rgba(204,51,51,0.10)" } : undefined}
+              >
+                <span>
+                  <b>{s.name}</b>
+                  {s.rules.qbAdvanced && (
+                    <span className="ml-2 text-[11px] text-faint">QB advanced</span>
+                  )}
+                  <span className="ml-3 text-[11.5px] text-faint">
+                    saved {s.updatedAt.toLocaleString()}
+                  </span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <Link href={`/admin/scoring-lab?set=${s.id}`} className="btn2 pri">
+                    Load
+                  </Link>
+                  <form action={deleteScoringSet}>
+                    <input type="hidden" name="setId" value={s.id} />
+                    <button type="submit" className="btn2">
+                      Delete
+                    </button>
+                  </form>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        {seasons.length === 0 ? (
+          <p className="empty">No stat data loaded yet — run the scoring pipeline first.</p>
+        ) : (
+          <ScoringLab
+            key={selected?.id ?? "default"}
+            seasons={seasons}
+            fieldGroups={prefill.groups}
+            qbGroup={prefill.qbGroup}
+            qbEnabled={prefill.qbEnabled}
+            initialSetName={selected?.name ?? ""}
+          />
         )}
       </div>
 

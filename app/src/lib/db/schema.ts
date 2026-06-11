@@ -718,6 +718,23 @@ export const tradeItems = pgTable("trade_items", {
 });
 
 // ---------------------------------------------------------------------------
+// Saved scoring sets (admin Scoring Lab)
+// ---------------------------------------------------------------------------
+
+/** Named scoring configurations the admin saves from the Lab to revisit and
+ *  compare. Independent of any league until applied via league settings. */
+export const scoringSets = pgTable(
+  "scoring_sets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    name: text("name").notNull(),
+    rules: jsonb("rules").$type<ScoringRules>().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("scoring_sets_name_unique").on(t.name)],
+);
+
+// ---------------------------------------------------------------------------
 // Championship sprint (cross-league playoffs)
 // ---------------------------------------------------------------------------
 

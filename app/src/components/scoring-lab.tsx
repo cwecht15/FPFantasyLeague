@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { runScoringLab, type LabState } from "@/lib/scoring/lab-actions";
+import { runScoringLab, saveScoringSet, type LabState } from "@/lib/scoring/lab-actions";
 import type { LabFieldGroup } from "@/lib/scoring/lab-form";
 import { RuleFieldsets } from "@/components/rules-fields";
 
@@ -81,10 +81,14 @@ export function ScoringLab({
   seasons,
   fieldGroups,
   qbGroup,
+  qbEnabled = true,
+  initialSetName = "",
 }: {
   seasons: number[];
   fieldGroups: LabFieldGroup[];
   qbGroup: LabFieldGroup;
+  qbEnabled?: boolean;
+  initialSetName?: string;
 }) {
   const [state, formAction, pending] = useActionState(runScoringLab, initialState);
 
@@ -145,13 +149,26 @@ export function ScoringLab({
             <span className="t">Rules</span>
           </div>
           <div className="flex flex-col gap-5 px-[22px] py-4">
-            <RuleFieldsets groups={fieldGroups} qbGroup={qbGroup} />
-            <div className="flex items-center gap-3">
+            <RuleFieldsets groups={fieldGroups} qbGroup={qbGroup} qbEnabled={qbEnabled} />
+            <div className="flex flex-wrap items-center gap-3">
               <button type="submit" disabled={pending} className="btn pri self-start">
                 <span>{pending ? "Scoring…" : "Run scoring"}</span>
               </button>
               <span className="note">Nothing is written — pure what-if on posted stat lines.</span>
               {state.error && <span className="text-sm text-flame">{state.error}</span>}
+              <span className="ml-auto flex items-center gap-2">
+                <input
+                  name="setName"
+                  defaultValue={initialSetName}
+                  placeholder="Set name…"
+                  maxLength={60}
+                  className="input"
+                  style={{ padding: "5px 10px", fontSize: 13, width: 180 }}
+                />
+                <button type="submit" formAction={saveScoringSet} className="btn gho">
+                  <span>Save set</span>
+                </button>
+              </span>
             </div>
           </div>
         </div>
