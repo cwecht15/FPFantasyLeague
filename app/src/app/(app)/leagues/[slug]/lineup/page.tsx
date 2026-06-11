@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+
 import { auth } from "@/lib/auth";
 import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
 import { getLineupView, eligiblePositions } from "@/lib/lineups/service";
 import { leagueCurrentWeek } from "@/lib/nfl/week";
 import { LineupEditor } from "@/components/lineup-editor";
-import { WeekNav } from "@/components/week-nav";
 
 export default async function LineupPage({
   params,
@@ -20,13 +21,13 @@ export default async function LineupPage({
   const ctx = await getLeagueForUser(slug, session.user.id);
   if (!ctx) notFound();
   if (!ctx.myTeam) {
-    return <p className="text-muted">You don&apos;t have a team in this league.</p>;
+    return <p className="empty">You don&apos;t have a team in this league.</p>;
   }
 
-  const week = weekParam
-    ? Number(weekParam)
-    : await leagueCurrentWeek(ctx.league.id, ctx.league.season);
-  if (!Number.isInteger(week) || week < 1 || week > 18) notFound();
+  const currentWeek = await leagueCurrentWeek(ctx.league.id, ctx.league.season);
+  const week = weekParam ? Number(weekParam) : currentWeek;
+  if (!Number.isInteger(week) || week < 1 || week > currentWeek) notFound();
+  const isCurrent = week === currentWeek;
 
   const settings = await getSettings(ctx.league.id);
   const { slots, roster } = await getLineupView(
@@ -42,20 +43,50 @@ export default async function LineupPage({
     eligibility[def.slot] = eligiblePositions(settings.rosterTemplate, def.slot);
   }
 
+  const base = `/leagues/${slug}/lineup`;
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="display text-xl">
-          {ctx.myTeam.name} — Week {week}
-        </h2>
-        <WeekNav base={`/leagues/${slug}/lineup`} week={week} />
-      </div>
+    <div>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">{ctx.myTeam.name}</div>
+          <h1 className="display">Week {week} lineup</h1>
+          <div className="sub">
+            {isCurrent
+              ? "Slots lock individually at each player's kickoff. Scored after charting — results post Tuesday 6:00 AM ET."
+              : "Final — scored from post-game charting."}
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          {week > 1 ? (
+            <Link href={`${base}?week=${week - 1}`} className="btn2">
+              ‹
+            </Link>
+          ) : (
+            <button className="btn2" disabled>
+              ‹
+            </button>
+          )}
+          <span className="display min-w-[92px] text-center text-[18px]">Week {week}</span>
+          {week < currentWeek ? (
+            <Link href={`${base}?week=${week + 1}`} className="btn2">
+              ›
+            </Link>
+          ) : (
+            <button className="btn2" disabled>
+              ›
+            </button>
+          )}
+        </div>
+      </header>
+
       <LineupEditor
         slots={slots}
         roster={roster}
         eligibility={eligibility}
         slug={slug}
         week={week}
+        editable={isCurrent}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { login } from "@/lib/auth/actions";
 import { AuthForm } from "@/components/auth-form";
+import { AuthStage } from "@/components/auth-stage";
 
 export const metadata = { title: "Sign in — FP Fantasy League" };
 
@@ -10,9 +11,8 @@ export default async function LoginPage() {
   if (session?.user) redirect("/leagues");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-8 px-6">
-      <h1 className="display text-4xl">Sign in</h1>
+    <AuthStage title="Sign in" sub="Charting-scored fantasy football">
       <AuthForm mode="login" action={login} />
-    </main>
+    </AuthStage>
   );
 }

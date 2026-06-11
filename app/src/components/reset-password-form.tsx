@@ -9,27 +9,23 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
   const [state, formAction, pending] = useActionState(resetPassword, initialState);
 
   return (
-    <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
+    <form action={formAction}>
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="email" value={email} />
-      <label className="flex flex-col gap-1 text-sm">
-        New password
+      <div className="field">
+        <label>New password</label>
         <input
           name="password"
           type="password"
           required
           minLength={8}
           autoComplete="new-password"
-          className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
+          className="input"
         />
-      </label>
-      {state.error && <p className="text-sm text-flame">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="btn-flame rounded-md px-4 py-2 disabled:opacity-50"
-      >
-        {pending ? "…" : "Set password & sign in"}
+      </div>
+      {state.error && <p className="mb-3 text-sm text-flame">{state.error}</p>}
+      <button type="submit" disabled={pending} className="btn pri" style={{ width: "100%" }}>
+        <span>{pending ? "…" : "Set password & sign in"}</span>
       </button>
     </form>
   );

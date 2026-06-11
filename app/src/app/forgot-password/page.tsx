@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { requestPasswordReset, type AuthFormState } from "@/lib/auth/actions";
+import { AuthStage } from "@/components/auth-stage";
 
 const initialState: AuthFormState = { error: null };
 
@@ -16,39 +17,28 @@ export default function ForgotPasswordPage() {
   );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-8 px-6">
-      <h1 className="display text-4xl">Reset password</h1>
+    <AuthStage title="Reset password">
       {state.sent ? (
-        <p className="max-w-sm text-center text-muted">
+        <p className="lsub">
           If that email has an account, a reset link is on its way. It expires in one hour.
         </p>
       ) : (
-        <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            Email
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
-            />
-          </label>
-          {state.error && <p className="text-sm text-flame">{state.error}</p>}
-          <button
-            type="submit"
-            disabled={pending}
-            className="btn-flame rounded-md px-4 py-2 disabled:opacity-50"
-          >
-            {pending ? "…" : "Send reset link"}
+        <form action={formAction}>
+          <div className="field">
+            <label>Email</label>
+            <input name="email" type="email" required autoComplete="email" className="input" />
+          </div>
+          {state.error && <p className="mb-3 text-sm text-flame">{state.error}</p>}
+          <button type="submit" disabled={pending} className="btn pri" style={{ width: "100%" }}>
+            <span>{pending ? "…" : "Send reset link"}</span>
           </button>
-          <p className="text-sm text-muted">
-            <Link href="/login" className="underline">
+          <p className="mt-4 text-center text-[13px] text-muted">
+            <Link href="/login" className="linkish">
               Back to sign in
             </Link>
           </p>
         </form>
       )}
-    </main>
+    </AuthStage>
   );
 }

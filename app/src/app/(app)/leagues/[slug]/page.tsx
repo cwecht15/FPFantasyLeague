@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+
 import { auth } from "@/lib/auth";
-import { getLeagueForUser, listTeams } from "@/lib/leagues/service";
-import { assignUserAction, generateScheduleAction, renameTeamAction } from "@/lib/leagues/actions";
-import { ActionForm } from "@/components/action-form";
+import { getLeagueForUser } from "@/lib/leagues/service";
+import { getHomeData } from "@/lib/leagues/home";
+import { fmt1, fmtKick, ord } from "@/lib/format";
 
 export default async function LeagueHomePage({
   params,
@@ -14,128 +16,194 @@ export default async function LeagueHomePage({
   if (!session?.user) redirect("/login");
   const ctx = await getLeagueForUser(slug, session.user.id);
   if (!ctx) notFound();
+  if (!ctx.myTeam) {
+    return <p className="empty">You don&apos;t have a team in this league.</p>;
+  }
 
-  const teams = await listTeams(ctx.league.id);
-  const commish = session.user.isSiteAdmin; // central admin shares invite codes
+  const league = ctx.league;
+  const d = await getHomeData(league, ctx.myTeam);
+  const base = `/leagues/${slug}`;
+
+  // Standings preview: top 6, or top 5 + you when you're outside it.
+  const top6 = d.standings.slice(0, 6);
+  const rows =
+    d.me && !top6.some((r) => r.teamId === d.me!.teamId)
+      ? [...d.standings.slice(0, 5), d.me]
+      : top6;
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <section>
-        <h2 className="display text-xl">Teams ({teams.length}/{ctx.league.numTeams})</h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {teams.map((t) => (
-            <li
-              key={t.id}
-              className="flex items-center justify-between rounded-md border border-line px-4 py-2"
-            >
-              <span>{t.name}</span>
-              {t.ownerUserId === session.user.id && (
-                <span className="text-xs text-faint">you</span>
-              )}
-              {!t.ownerUserId && <span className="text-xs text-faint">unclaimed</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="flex flex-col gap-6">
-        {commish && (
-          <div className="rounded-lg border border-line p-4">
-            <h3 className="font-semibold">Invite managers</h3>
-            <p className="mt-2 text-sm text-muted">
-              Share this invite code — new managers paste it on the leagues page:
-            </p>
-            <code className="mt-2 inline-block rounded bg-surface px-3 py-1.5 font-mono text-flame">
-              {ctx.league.inviteCode}
-            </code>
+    <div>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">
+            {league.name} · {league.season} · {league.numTeams} teams
           </div>
-        )}
+          <h1 className="display">{ctx.myTeam.name}</h1>
+          {d.me && (
+            <div className="sub">
+              <b>
+                {d.me.w}–{d.me.l}
+                {d.me.t > 0 ? `–${d.me.t}` : ""}
+              </b>{" "}
+              · {ord(d.me.rank)} place · {fmt1(d.me.pf)} points for
+            </div>
+          )}
+        </div>
+        <div className="chip">
+          <span>Week {d.week}</span>
+        </div>
+      </header>
 
-        {commish && (
-          <div className="rounded-lg border border-line p-4">
-            <h3 className="font-semibold">Assign a manager</h3>
-            <p className="mt-2 text-sm text-muted">
-              Enroll a registered user into this league — they get the first unclaimed
-              team (or a new one). Regular users can&apos;t create leagues; this and the
-              invite code are how they get in.
-            </p>
-            <div className="mt-3">
-              <ActionForm
-                action={assignUserAction}
-                submitLabel="Assign"
-                successMessage="Manager assigned"
+      <div className="mt-2 grid gap-4" style={{ gridTemplateColumns: "1.1fr 1fr" }}>
+        <div className="panel">
+          <div className="ptitle">
+            <span className="t">Week {d.week} matchup</span>
+            <span className="m">Results post Tue 6:00 AM ET</span>
+          </div>
+          {d.matchup ? (
+            <>
+              <div
+                className="grid items-center gap-[18px] px-[26px] pb-3 pt-[30px]"
+                style={{ gridTemplateColumns: "1fr auto 1fr" }}
               >
-                <input type="hidden" name="slug" value={slug} />
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex flex-col gap-1 text-sm">
-                    User email
-                    <input
-                      name="email"
-                      type="email"
-                      required
-                      className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-sm">
-                    Team name (optional)
-                    <input
-                      name="teamName"
-                      maxLength={40}
-                      className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
-                    />
-                  </label>
+                <div className="text-center">
+                  <div className="display text-[20px]">{ctx.myTeam.name}</div>
+                  {d.me && (
+                    <div className="mt-[5px] text-xs text-faint">
+                      {d.me.w}–{d.me.l} · {ord(d.me.rank)}
+                    </div>
+                  )}
+                  <div className="mt-3 font-mono text-[52px] font-bold">
+                    {fmt1(d.matchup.myPoints)}
+                  </div>
                 </div>
-              </ActionForm>
-            </div>
-          </div>
-        )}
-
-        {commish && (
-          <div className="rounded-lg border border-line p-4">
-            <h3 className="font-semibold">Schedule</h3>
-            <p className="mt-2 text-sm text-muted">
-              (Re)generate the regular-season round-robin schedule. Safe while the league is
-              in setup; existing regular-season matchups are replaced.
+                <div className="display text-[18px] text-faint">VS</div>
+                <div className="text-center">
+                  <div className="display text-[20px]">{d.matchup.oppName}</div>
+                  {d.matchup.oppRow && (
+                    <div className="mt-[5px] text-xs text-faint">
+                      {d.matchup.oppRow.w}–{d.matchup.oppRow.l} · {ord(d.matchup.oppRow.rank)}
+                    </div>
+                  )}
+                  <div className="mt-3 font-mono text-[52px] font-bold text-muted">
+                    {fmt1(d.matchup.oppPoints)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between px-[26px] pb-5 pt-1.5 text-xs text-faint">
+                <span>
+                  Lineup:{" "}
+                  <b className="text-muted">
+                    {d.lineup.filled} / {d.lineup.total} set
+                  </b>{" "}
+                  · locks at kickoff
+                </span>
+                {d.lineup.firstLock && <span>First lock: {fmtKick(d.lineup.firstLock)} ET</span>}
+              </div>
+              <div className="flex justify-center gap-2.5 px-[26px] pb-6">
+                <Link href={`${base}/lineup`} className="btn pri">
+                  <span>Set lineup</span>
+                </Link>
+                <Link href={`${base}/matchups/${d.matchup.id}`} className="btn gho">
+                  <span>Full matchup</span>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p className="empty">
+              No matchup this week{d.week === 1 ? " — schedule pending" : " (bye)"}.
             </p>
-            <div className="mt-3">
-              <ActionForm
-                action={generateScheduleAction}
-                submitLabel="Generate schedule"
-                successMessage="Schedule generated"
-              >
-                <input type="hidden" name="slug" value={slug} />
-              </ActionForm>
+          )}
+          {d.lastWeek && (
+            <div
+              className="mx-[26px] flex items-center gap-2.5 border-t border-line pb-[18px] pt-[13px] text-[12.5px] text-muted"
+            >
+              <span className={`res ${d.lastWeek.won ? "W" : "L"}`}>
+                {d.lastWeek.won ? "W" : d.lastWeek.tie ? "T" : "L"}
+              </span>
+              <span>
+                Week {d.lastWeek.week} final —{" "}
+                <b className="font-mono text-paper">
+                  {fmt1(d.lastWeek.myPoints)} – {fmt1(d.lastWeek.oppPoints)}
+                </b>{" "}
+                vs {d.lastWeek.oppName}
+              </span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {ctx.myTeam && (
-          <div className="rounded-lg border border-line p-4">
-            <h3 className="font-semibold">My team</h3>
-            <div className="mt-3">
-              <ActionForm
-                action={renameTeamAction}
-                submitLabel="Rename"
-                successMessage="Saved"
-                className="flex items-end gap-3"
-              >
-                <input type="hidden" name="slug" value={slug} />
-                <label className="flex flex-col gap-1 text-sm">
-                  Team name
-                  <input
-                    name="teamName"
-                    defaultValue={ctx.myTeam.name}
-                    required
-                    minLength={2}
-                    maxLength={40}
-                    className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
-                  />
-                </label>
-              </ActionForm>
-            </div>
+        <div className="panel">
+          <div className="ptitle">
+            <span className="t">Standings</span>
+            <Link href={`${base}/standings`} className="m">
+              All {league.numTeams} teams →
+            </Link>
           </div>
-        )}
-      </section>
+          {rows.length === 0 ? (
+            <p className="empty">Standings appear once a week is scored.</p>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Team</th>
+                  <th className="r">W–L</th>
+                  <th className="r">PF</th>
+                  <th className="r">PA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((s) => (
+                  <tr key={s.teamId} className={s.teamId === ctx.myTeam!.id ? "you" : "hov"}>
+                    <td className="rk">{s.rank}</td>
+                    <td className="tm">
+                      {s.name}
+                      {s.teamId === ctx.myTeam!.id && <span className="youchip">YOU</span>}
+                    </td>
+                    <td className="r num">
+                      {s.w}–{s.l}
+                    </td>
+                    <td className="r num">{fmt1(s.pf)}</td>
+                    <td className="r num">{fmt1(s.pa)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <div
+        className="mb-11 mt-4 flex items-center justify-between gap-6 border border-line bg-surface px-[26px] py-[18px]"
+        style={{ borderLeft: "3px solid var(--color-flame)" }}
+      >
+        <div>
+          <div className="display text-[18px]">
+            Championship sprint —{" "}
+            {d.sprint.inField
+              ? "you're in the field"
+              : d.me && d.me.rank > 0 && d.me.rank <= 2
+                ? "you're inside the line"
+                : "top 2 qualify"}
+          </div>
+          <p className="m-0 mt-[5px] max-w-[760px] text-[13px] text-muted">
+            Top 2 from every league enter one global pool after Week 14. Cumulative starter
+            points across Weeks 15–17 decide the champion.
+            {d.sprint.inField && d.sprint.seed
+              ? ` You're seeded #${d.sprint.seed} — keep setting your lineup.`
+              : d.me && d.me.rank > 0
+                ? ` You're currently ${ord(d.me.rank)}.`
+                : ""}
+          </p>
+        </div>
+        <Link
+          href="/championship"
+          className="whitespace-nowrap pb-0.5 text-xs font-extrabold uppercase tracking-[0.1em] text-paper"
+          style={{ borderBottom: "2px solid var(--color-flame)" }}
+        >
+          Sprint leaderboard →
+        </Link>
+      </div>
     </div>
   );
 }

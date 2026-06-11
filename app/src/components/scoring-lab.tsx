@@ -19,10 +19,12 @@ function LabLeaderboard({ rows, scope }: { rows: NonNullable<LabState["rows"]>; 
   const cols = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
 
   return (
-    <section>
-      <h2 className="display text-xl">Leaderboard</h2>
-      <p className="mt-1 text-sm text-muted">{scope}</p>
-      <div className="mt-3 overflow-x-auto">
+    <section className="panel">
+      <div className="ptitle">
+        <span className="t">Leaderboard</span>
+        <span className="m">{scope}</span>
+      </div>
+      <div className="overflow-x-auto">
         <table className="w-full border-collapse whitespace-nowrap text-sm">
           <thead>
             <tr className="border-b border-line-strong text-left text-muted">
@@ -87,9 +89,13 @@ export function ScoringLab({
   const [state, formAction, pending] = useActionState(runScoringLab, initialState);
 
   return (
-    <div className="flex flex-col gap-6">
-      <form action={formAction} className="flex flex-col gap-5 rounded-lg border border-line p-5">
-        <div className="grid gap-4 sm:grid-cols-4">
+    <div className="flex flex-col gap-4">
+      <form action={formAction} className="flex flex-col gap-4">
+        <div className="panel">
+          <div className="ptitle">
+            <span className="t">Scope</span>
+          </div>
+          <div className="grid gap-4 px-[22px] py-4 sm:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             Season
             <select name="season" defaultValue={seasons[seasons.length - 1]} className={inputClass}>
@@ -131,18 +137,24 @@ export function ScoringLab({
               ))}
             </select>
           </label>
+          </div>
         </div>
 
-        <RuleFieldsets groups={fieldGroups} qbGroup={qbGroup} />
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="self-start rounded-md btn-flame px-4 py-2 text-sm disabled:opacity-50"
-        >
-          {pending ? "Scoring…" : "Run scoring"}
-        </button>
-        {state.error && <p className="text-sm text-flame">{state.error}</p>}
+        <div className="panel">
+          <div className="ptitle">
+            <span className="t">Rules</span>
+          </div>
+          <div className="flex flex-col gap-5 px-[22px] py-4">
+            <RuleFieldsets groups={fieldGroups} qbGroup={qbGroup} />
+            <div className="flex items-center gap-3">
+              <button type="submit" disabled={pending} className="btn pri self-start">
+                <span>{pending ? "Scoring…" : "Run scoring"}</span>
+              </button>
+              <span className="note">Nothing is written — pure what-if on posted stat lines.</span>
+              {state.error && <span className="text-sm text-flame">{state.error}</span>}
+            </div>
+          </div>
+        </div>
       </form>
 
       {state.rows && <LabLeaderboard rows={state.rows} scope={state.scope} />}

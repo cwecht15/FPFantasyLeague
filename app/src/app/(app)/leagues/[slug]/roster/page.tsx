@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
@@ -7,6 +8,7 @@ import { players, playerWeekScores, rosterEntries } from "@/lib/db/schema";
 import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
 import { getLineupView } from "@/lib/lineups/service";
 import { leagueCurrentWeek } from "@/lib/nfl/week";
+import { fmt1 } from "@/lib/format";
 import { DropButton } from "@/components/player-row-actions";
 
 export default async function RosterPage({
@@ -20,14 +22,13 @@ export default async function RosterPage({
   const ctx = await getLeagueForUser(slug, session.user.id);
   if (!ctx) notFound();
   if (!ctx.myTeam) {
-    return <p className="text-muted">You don&apos;t have a team in this league.</p>;
+    return <p className="empty">You don&apos;t have a team in this league.</p>;
   }
 
   const league = ctx.league;
   const week = await leagueCurrentWeek(league.id, league.season);
   const settings = await getSettings(league.id);
 
-  // Current-week slot per player (also triggers the never-empty autofill).
   const view = await getLineupView(
     league.id,
     ctx.myTeam.id,
@@ -38,7 +39,10 @@ export default async function RosterPage({
   const slotByPlayer = new Map(
     view.slots
       .filter((s) => s.gsisId)
-      .map((s) => [s.gsisId as string, `${s.slot}${s.slotIndex > 0 ? ` ${s.slotIndex + 1}` : ""}`]),
+      .map((s) => [
+        s.gsisId as string,
+        s.slot === "BENCH" ? "BN" : `${s.slot}${s.slotIndex > 0 ? ` ${s.slotIndex + 1}` : ""}`,
+      ]),
   );
 
   const rows = await db
@@ -60,8 +64,7 @@ export default async function RosterPage({
     })
     .from(rosterEntries)
     .innerJoin(players, eq(players.gsisId, rosterEntries.gsisId))
-    .where(and(eq(rosterEntries.teamId, ctx.myTeam.id), isNull(rosterEntries.droppedAt)))
-    .orderBy(rosterEntries.id);
+    .where(and(eq(rosterEntries.teamId, ctx.myTeam.id), isNull(rosterEntries.droppedAt)));
 
   const posOrder = new Map([["QB", 0], ["RB", 1], ["WR", 2], ["TE", 3]]);
   const sorted = [...rows].sort(
@@ -71,59 +74,71 @@ export default async function RosterPage({
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="display text-xl">{ctx.myTeam.name}</h2>
-        <span className="text-sm text-muted">
-          {rows.length} players · week {week} lineup shown
-        </span>
-      </div>
+    <div>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">{ctx.myTeam.name}</div>
+          <h1 className="display">Roster</h1>
+          <div className="sub">
+            {rows.length} players · Week {week} lineup shown ·{" "}
+            <Link href={`/leagues/${slug}/players`} className="linkish">
+              add from Players
+            </Link>
+          </div>
+        </div>
+      </header>
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line-strong text-left text-xs text-faint">
-            <th className="px-2 py-2">Player</th>
-            <th className="px-2 py-2">Pos</th>
-            <th className="px-2 py-2">NFL</th>
-            <th className="px-2 py-2">Slot (W{week})</th>
-            <th className="px-2 py-2 text-right">Season pts</th>
-            <th className="px-2 py-2">Acquired</th>
-            <th className="px-2 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((r) => {
-            const slot = slotByPlayer.get(r.gsisId);
-            const starter = slot && slot !== "IR" && !slot.startsWith("BENCH");
-            return (
-              <tr key={r.gsisId} className="border-b border-line hover:bg-pit">
-                <td className="px-2 py-1.5 font-bold">{r.name}</td>
-                <td className="px-2 py-1.5">{r.position}</td>
-                <td className="px-2 py-1.5 text-muted">{r.nflTeam}</td>
-                <td className="px-2 py-1.5">
-                  {slot ? (
-                    <span className={starter ? "font-bold text-flame" : "text-muted"}>{slot}</span>
-                  ) : (
-                    <span className="text-faint">—</span>
-                  )}
-                </td>
-                <td className="px-2 py-1.5 text-right font-mono">
-                  {Number(r.seasonPts).toFixed(1)}
-                </td>
-                <td className="px-2 py-1.5 text-xs text-faint">
-                  {r.acquiredVia.replace("_", " ")} · {r.acquiredAt.toLocaleDateString()}
-                </td>
-                <td className="px-2 py-1.5">
-                  <DropButton slug={slug} gsisId={r.gsisId} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {rows.length === 0 && (
-        <p className="text-sm text-faint">No players yet — draft or add from the Players tab.</p>
-      )}
+      <div className="panel">
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Pos</th>
+              <th>NFL</th>
+              <th>Slot (W{week})</th>
+              <th className="r">Season pts</th>
+              <th>Acquired</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => {
+              const slot = slotByPlayer.get(r.gsisId) ?? "BN";
+              const starter = slot !== "BN" && slot !== "IR";
+              return (
+                <tr key={r.gsisId} className="hov">
+                  <td className="tm">{r.name}</td>
+                  <td>
+                    <span className={`pos ${r.position}`}>{r.position}</span>
+                  </td>
+                  <td className="dim">{r.nflTeam}</td>
+                  <td>
+                    {starter ? (
+                      <span className="display text-[13px] text-flame">{slot}</span>
+                    ) : (
+                      <span className="dim">{slot}</span>
+                    )}
+                  </td>
+                  <td className="r num">{fmt1(Number(r.seasonPts))}</td>
+                  <td className="dim" style={{ fontSize: 12 }}>
+                    {r.acquiredVia.replace("_", " ")} · {r.acquiredAt.toLocaleDateString()}
+                  </td>
+                  <td className="r">
+                    <DropButton slug={slug} gsisId={r.gsisId} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {rows.length === 0 && (
+          <p className="empty">No players yet — draft or add from the Players tab.</p>
+        )}
+      </div>
+      <p className="note mb-11 mt-3">
+        Dropping a starter empties that lineup slot. Locked players (kickoff passed) can&apos;t
+        be dropped this week.
+      </p>
     </div>
   );
 }

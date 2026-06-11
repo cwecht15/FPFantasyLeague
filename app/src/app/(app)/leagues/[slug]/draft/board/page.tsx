@@ -63,6 +63,7 @@ export default async function DraftBoardPage({
           picks={board}
           players={boardPlayers}
           currentPickId={draft.status === "complete" ? null : draft.currentPickId}
+          myTeamId={ctx.myTeam?.id ?? null}
         />
       </div>
     </div>

@@ -11,6 +11,7 @@ import { listMyQueue, pauseDraftAction, startDraftAction } from "@/lib/draft/act
 import { ActionForm } from "@/components/action-form";
 import { Countdown, PickButton, PollRefresher, QueueRemove } from "@/components/draft-client";
 import { DraftBoard, type BoardPlayer } from "@/components/draft-board";
+import { fmt1 } from "@/lib/format";
 
 const POSITIONS = ["ALL", "QB", "RB", "WR", "TE"];
 
@@ -33,16 +34,24 @@ export default async function DraftPage({
 
   if (!draft) {
     return (
-      <div className="flex flex-col gap-4">
-        <p className="text-muted">The draft hasn&apos;t started yet.</p>
+      <div>
+        <header className="page-head">
+          <div>
+            <div className="eyebrow">{ctx.league.name}</div>
+            <h1 className="display">Draft</h1>
+            <div className="sub">The draft hasn&apos;t started yet.</div>
+          </div>
+        </header>
         {admin && (
-          <div className="max-w-md rounded-lg border border-line p-5">
-            <h3 className="font-semibold">Start the draft</h3>
-            <p className="mt-1 text-sm text-muted">
-              Uses the league&apos;s draft config (order, rounds, clock). All teams must be
-              claimed.
-            </p>
-            <div className="mt-3">
+          <div className="panel max-w-md">
+            <div className="ptitle">
+              <span className="t">Start the draft</span>
+            </div>
+            <div className="px-[22px] py-4">
+              <p className="note mb-3">
+                Uses the league&apos;s draft config (order, rounds, clock). All teams must be
+                claimed.
+              </p>
               <ActionForm action={startDraftAction} submitLabel="Start draft">
                 <input type="hidden" name="slug" value={slug} />
               </ActionForm>
@@ -55,7 +64,12 @@ export default async function DraftPage({
 
   const board = await getDraftBoard(draft.id);
   const teamRows = await db
-    .select({ id: teams.id, name: teams.name, ownerUserId: teams.ownerUserId, draftPosition: teams.draftPosition })
+    .select({
+      id: teams.id,
+      name: teams.name,
+      ownerUserId: teams.ownerUserId,
+      draftPosition: teams.draftPosition,
+    })
     .from(teams)
     .where(eq(teams.leagueId, ctx.league.id));
   const teamById = new Map(teamRows.map((t) => [t.id, t]));
@@ -99,36 +113,52 @@ export default async function DraftPage({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div>
       {(draft.status === "in_progress" || draft.status === "paused") && <PollRefresher />}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line p-4">
+      <header className="page-head">
         <div>
+          <div className="eyebrow">{ctx.league.name}</div>
+          <h1 className="display">Draft</h1>
+        </div>
+        <Link href={`/leagues/${slug}/draft/board`} className="btn pri">
+          <span>Draft board</span>
+        </Link>
+      </header>
+
+      {/* status bar */}
+      <div
+        className="panel flex flex-wrap items-center justify-between gap-4 px-[22px] py-4"
+        style={myTurn ? { borderLeft: "3px solid var(--color-flame)" } : undefined}
+      >
+        <div className="flex items-center gap-4">
           {draft.status === "complete" ? (
-            <span className="font-semibold text-paper/80">Draft complete</span>
+            <span className="display text-[22px]">Draft complete</span>
           ) : current ? (
             <>
-              <span className="text-sm text-muted">
-                Round {current.round}, pick {current.overallPick} —{" "}
-              </span>
-              <span className="font-semibold">{currentTeam?.name}</span>
-              {myTurn && <span className="ml-2 rounded bg-flame px-2 py-0.5 text-xs font-bold">YOUR PICK</span>}
-              <span className="ml-3 text-sm text-muted">
-                <Countdown deadline={current.deadlineAt ? current.deadlineAt.toISOString() : null} />
-              </span>
+              <div>
+                <div className="text-xs text-faint">
+                  Round {current.round}, pick {current.overallPick}
+                </div>
+                <div className="display text-[22px]">{currentTeam?.name}</div>
+              </div>
+              {myTurn && (
+                <span className="chip" style={{ fontSize: 13 }}>
+                  <span>Your pick</span>
+                </span>
+              )}
               {draft.status === "paused" && (
-                <span className="ml-2 rounded bg-surface px-2 py-0.5 text-xs font-bold text-paper">PAUSED</span>
+                <span className="display border border-line bg-surface px-2.5 py-1 text-[12px]">
+                  Paused
+                </span>
               )}
             </>
           ) : null}
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/leagues/${slug}/draft/board`}
-            className="btn-flame rounded-md px-4 py-2 text-xs uppercase tracking-wide"
-          >
-            Draft board
-          </Link>
+        <div className="flex items-center gap-5">
+          {draft.status === "in_progress" && current?.deadlineAt && (
+            <Countdown deadline={current.deadlineAt.toISOString()} />
+          )}
           {admin && draft.status !== "complete" && (
             <ActionForm
               action={pauseDraftAction}
@@ -136,90 +166,89 @@ export default async function DraftPage({
               className="flex items-center gap-2"
             >
               <input type="hidden" name="slug" value={slug} />
-              <input type="hidden" name="paused" value={draft.status === "paused" ? "false" : "true"} />
+              <input
+                type="hidden"
+                name="paused"
+                value={draft.status === "paused" ? "false" : "true"}
+              />
             </ActionForm>
           )}
         </div>
       </div>
 
       {draft.status !== "complete" && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <section className="lg:col-span-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="label text-sm">
-                Available players
-              </h3>
-              <form action={`/leagues/${slug}/draft`} method="get" className="flex items-center gap-2">
-                <input
-                  name="q"
-                  defaultValue={q}
-                  placeholder="Search…"
-                  className="rounded-md border border-line-strong bg-surface px-2 py-1 text-sm"
-                />
-                <input type="hidden" name="pos" value={pos} />
-                <button className="rounded border border-line-strong px-2 py-1 text-xs hover:bg-surface">
-                  Go
-                </button>
-              </form>
-              <div className="flex gap-1">
+        <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: "1.8fr 1fr" }}>
+          <div className="panel">
+            <div className="ptitle">
+              <span className="t">Available players</span>
+              <span className="flex items-center gap-2">
+                <form action={`/leagues/${slug}/draft`} method="get" className="flex items-center gap-2">
+                  <input
+                    name="q"
+                    defaultValue={q}
+                    placeholder="Search…"
+                    className="input"
+                    style={{ padding: "5px 10px", fontSize: 13, width: 150 }}
+                  />
+                  <input type="hidden" name="pos" value={pos} />
+                </form>
                 {POSITIONS.map((p) => (
                   <Link
                     key={p}
                     href={`/leagues/${slug}/draft?q=${encodeURIComponent(q)}&pos=${p}`}
-                    className={`rounded px-2 py-1 text-xs ${
-                      p === pos
-                        ? "bg-paper font-semibold text-ink"
-                        : "border border-line text-muted hover:bg-surface"
-                    }`}
+                    className={`pill ${p === pos ? "on" : ""}`}
+                    style={{ padding: "3px 9px", fontSize: 11 }}
                   >
                     {p}
                   </Link>
                 ))}
-              </div>
+              </span>
             </div>
-            <table className="mt-3 w-full border-collapse text-sm">
+            <table className="tbl">
               <thead>
-                <tr className="border-b border-line-strong text-left text-xs text-faint">
-                  <th className="px-2 py-1.5">Player</th>
-                  <th className="px-2 py-1.5">Pos</th>
-                  <th className="px-2 py-1.5">NFL</th>
-                  <th className="px-2 py-1.5 text-right">Last szn</th>
-                  <th className="px-2 py-1.5"></th>
+                <tr>
+                  <th>Player</th>
+                  <th>Pos</th>
+                  <th>NFL</th>
+                  <th className="r">Last szn</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {available.map((p) => (
-                  <tr key={p.gsisId} className="border-b border-line hover:bg-pit">
-                    <td className="px-2 py-1.5">{p.name}</td>
-                    <td className="px-2 py-1.5">{p.position}</td>
-                    <td className="px-2 py-1.5 text-muted">{p.nflTeam}</td>
-                    <td className="px-2 py-1.5 text-right font-mono">
-                      {p.lastSeasonPts !== null ? p.lastSeasonPts.toFixed(1) : "—"}
+                  <tr key={p.gsisId} className="hov">
+                    <td className="tm">{p.name}</td>
+                    <td>
+                      <span className={`pos ${p.position}`}>{p.position}</span>
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="dim">{p.nflTeam}</td>
+                    <td className="r num">{p.lastSeasonPts !== null ? fmt1(p.lastSeasonPts) : "—"}</td>
+                    <td className="r">
                       <PickButton slug={slug} gsisId={p.gsisId} canPick={canPickNow} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </section>
+          </div>
 
-          <section className="flex flex-col gap-6">
-            <div>
-              <h3 className="label text-sm">
-                My queue (autopick order)
-              </h3>
+          <div className="flex flex-col gap-4">
+            <div className="panel">
+              <div className="ptitle">
+                <span className="t">My queue</span>
+                <span className="m">autopick order</span>
+              </div>
               {myQueue.length === 0 ? (
-                <p className="mt-2 text-sm text-faint">
-                  Empty — autopick falls back to best available.
-                </p>
+                <p className="empty">Empty — autopick falls back to best available.</p>
               ) : (
-                <ol className="mt-2 flex flex-col gap-1 text-sm">
+                <ol className="flex flex-col">
                   {myQueue.map((item, i) => (
-                    <li key={item.id} className="flex items-center justify-between rounded border border-line px-2 py-1">
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between border-b border-line px-[22px] py-2 text-[13.5px] last:border-b-0"
+                    >
                       <span>
-                        <span className="mr-2 text-faint">{i + 1}.</span>
+                        <span className="num mr-2 font-mono text-faint">{i + 1}.</span>
                         {playerNames.get(item.gsisId) ?? item.gsisId}
                       </span>
                       <QueueRemove slug={slug} queueId={item.id} />
@@ -229,42 +258,51 @@ export default async function DraftPage({
               )}
             </div>
 
-            <div>
-              <h3 className="label text-sm">
-                Recent picks
-              </h3>
-              <ul className="mt-2 flex flex-col gap-1 text-sm">
-                {recent.map((p) => (
-                  <li key={p.id} className="text-paper/80">
-                    <span className="mr-1 font-mono text-xs text-faint">{p.overallPick}.</span>
-                    {playerNames.get(p.gsisId ?? "") ?? p.gsisId} —{" "}
-                    <span className="text-muted">{teamById.get(p.teamId)?.name}</span>
-                    {p.isAutopick && <span className="ml-1 text-xs text-faint">(auto)</span>}
-                  </li>
-                ))}
-              </ul>
+            <div className="panel">
+              <div className="ptitle">
+                <span className="t">Recent picks</span>
+              </div>
+              {recent.length === 0 ? (
+                <p className="empty">No picks yet.</p>
+              ) : (
+                <ul className="flex flex-col">
+                  {recent.map((p) => (
+                    <li
+                      key={p.id}
+                      className="border-b border-line px-[22px] py-2 text-[13px] last:border-b-0"
+                    >
+                      <span className="num mr-2 font-mono text-xs text-faint">{p.overallPick}.</span>
+                      <b>{playerNames.get(p.gsisId ?? "") ?? p.gsisId}</b>{" "}
+                      <span className="text-muted">— {teamById.get(p.teamId)?.name}</span>
+                      {p.isAutopick && <span className="ml-1 text-[11px] text-faint">(auto)</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          </section>
+          </div>
         </div>
       )}
 
-      <section>
-        <div className="flex items-baseline justify-between">
-          <h3 className="display text-xl">Draft board</h3>
-          <Link href={`/leagues/${slug}/draft/board`} className="text-xs font-bold text-muted hover:text-paper">
+      <div className="panel mt-4">
+        <div className="ptitle">
+          <span className="t">Draft board</span>
+          <Link href={`/leagues/${slug}/draft/board`} className="m">
             Full-screen board →
           </Link>
         </div>
-        <div className="mt-3">
+        <div className="p-3">
           <DraftBoard
             teams={orderedTeams}
             picks={board}
             players={boardPlayers}
             currentPickId={draft.status === "complete" ? null : draft.currentPickId}
+            myTeamId={ctx.myTeam?.id ?? null}
             compact
           />
         </div>
-      </section>
+      </div>
+      <div className="h-11" />
     </div>
   );
 }

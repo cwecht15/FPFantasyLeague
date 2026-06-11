@@ -6,10 +6,6 @@ import type { AuthFormState } from "@/lib/auth/actions";
 
 const initialState: AuthFormState = { error: null };
 
-const inputClass =
-  "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm " +
-  "placeholder:text-faint focus:border-paper focus:outline-none";
-
 export function AuthForm({
   mode,
   action,
@@ -20,52 +16,53 @@ export function AuthForm({
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
+    <form action={formAction}>
       {mode === "signup" && (
-        <label className="flex flex-col gap-1 text-sm">
-          Display name
-          <input name="displayName" required minLength={2} maxLength={60} className={inputClass} />
-        </label>
+        <div className="field">
+          <label>Display name</label>
+          <input name="displayName" required minLength={2} maxLength={60} className="input" />
+        </div>
       )}
-      <label className="flex flex-col gap-1 text-sm">
-        Email
-        <input name="email" type="email" required autoComplete="email" className={inputClass} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Password
+      <div className="field">
+        <label>Email</label>
+        <input name="email" type="email" required autoComplete="email" className="input" />
+      </div>
+      <div className="field">
+        <label>Password</label>
         <input
           name="password"
           type="password"
           required
           minLength={8}
           autoComplete={mode === "login" ? "current-password" : "new-password"}
-          className={inputClass}
+          className="input"
         />
-      </label>
-      {state.error && <p className="text-sm text-flame">{state.error}</p>}
+      </div>
+      {state.error && <p className="mb-3 text-sm text-flame">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md btn-flame px-4 py-2 disabled:opacity-50"
+        className="btn pri w-full"
+        style={{ width: "100%" }}
       >
-        {pending ? "…" : mode === "login" ? "Sign in" : "Create account"}
+        <span>{pending ? "…" : mode === "login" ? "Sign in" : "Create account"}</span>
       </button>
-      <p className="text-sm text-muted">
+      <p className="mt-4 text-center text-[13px] text-muted">
         {mode === "login" ? (
           <>
             New here?{" "}
-            <Link href="/signup" className="underline">
+            <Link href="/signup" className="linkish">
               Create an account
             </Link>
             {" · "}
-            <Link href="/forgot-password" className="underline">
+            <Link href="/forgot-password" className="linkish">
               Forgot password?
             </Link>
           </>
         ) : (
           <>
             Already have an account?{" "}
-            <Link href="/login" className="underline">
+            <Link href="/login" className="linkish">
               Sign in
             </Link>
           </>

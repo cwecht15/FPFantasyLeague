@@ -1,18 +1,49 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+
 import { auth } from "@/lib/auth";
 import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
 import {
-  updateConfigsAction,
-  updateRosterAction,
+  assignUserAction,
+  generateScheduleAction,
+  renameTeamAction,
   updateScoringAction,
 } from "@/lib/leagues/actions";
 import { ActionForm } from "@/components/action-form";
 import { RuleFieldsets } from "@/components/rules-fields";
-import { ACTIVE_SLOTS } from "@/lib/leagues/settings";
+import { CopyButton } from "@/components/copy-button";
 import { groupsFromRules } from "@/lib/scoring/lab-form";
+import type { ScoringRules } from "@/lib/scoring/scoring-systems";
 
-const inputClass =
-  "rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none";
+/** Flat rule/value rows for the manager's read-only scoring table. */
+function ruleRows(r: ScoringRules): [string, string][] {
+  const rows: [string, string][] = [
+    ["Passing yards", `1 pt / ${r.passYdsPerPoint} yds`],
+    ["Passing TD", String(r.passTd)],
+    ["Interception", String(r.interception)],
+    ["Rushing yards", `1 pt / ${r.rushYdsPerPoint} yds`],
+    ["Rushing TD", String(r.rushTd)],
+    ["Reception", String(r.reception)],
+    ["Receiving yards", `1 pt / ${r.recYdsPerPoint} yds`],
+    ["Receiving TD", String(r.recTd)],
+    ["Fumble lost", String(r.fumbleLost)],
+  ];
+  if (r.advanced?.missedTackleForced) {
+    rows.push(["Missed tackle forced", String(r.advanced.missedTackleForced)]);
+  }
+  if (r.qbAdvanced) {
+    rows.push(
+      ["QB: pass yds (5+ air)", `${r.qbAdvanced.deepYd} / yd`],
+      ["QB: passing 1st down (5+ air)", String(r.qbAdvanced.deepFirstDown)],
+      ["QB: passing TD (5+ air)", String(r.qbAdvanced.deepTd)],
+      ["QB: sack taken", String(r.qbAdvanced.sack)],
+      ["QB: interception", String(r.qbAdvanced.interception)],
+      ["QB: rushing TD", String(r.qbAdvanced.rushTd)],
+      ["QB: EPA / dropback ×", String(r.qbAdvanced.epaPerDropback)],
+    );
+  }
+  return rows;
+}
 
 export default async function SettingsPage({
   params,
@@ -25,204 +56,189 @@ export default async function SettingsPage({
   const ctx = await getLeagueForUser(slug, session.user.id);
   if (!ctx) notFound();
 
-  const settings = await getSettings(ctx.league.id);
-  // Leagues are administered centrally — only site admins edit settings.
+  const league = ctx.league;
+  const settings = await getSettings(league.id);
   const admin = session.user.isSiteAdmin;
-  const slotCounts = new Map(settings.rosterTemplate.slots.map((s) => [s.slot, s.count]));
-
-  if (!admin) {
-    return (
-      <div className="flex flex-col gap-6">
-        <section>
-          <h2 className="display text-xl">Scoring</h2>
-          <pre className="mt-3 overflow-x-auto rounded-lg border border-line bg-pit p-4 text-xs text-paper/80">
-            {JSON.stringify(settings.scoringRules, null, 2)}
-          </pre>
-        </section>
-        <section>
-          <h2 className="display text-xl">Roster</h2>
-          <p className="mt-2 text-sm text-muted">
-            {settings.rosterTemplate.slots.map((s) => `${s.count} ${s.slot}`).join(" · ")}
-          </p>
-        </section>
-        <p className="text-sm text-faint">League settings are managed by the site admins.</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col gap-10">
-      <p className="text-sm text-muted">
-        Settings version {settings.version}. Scoring or roster edits trigger an automatic
-        re-score of all weeks.
-      </p>
-
-      <section className="rounded-lg border border-line p-5">
-        <h2 className="display text-xl">Scoring rules</h2>
-        <p className="mt-1 text-sm text-muted">
-          Same inputs as the Scoring Lab, pre-filled with this league&apos;s current values.
-          Saving re-scores every pushed week automatically.
-        </p>
-        <div className="mt-4">
-          <ActionForm
-            action={updateScoringAction}
-            submitLabel="Save scoring"
-            successMessage="Saved — re-score queued"
-            className="flex flex-col gap-5"
-          >
-            <input type="hidden" name="slug" value={slug} />
-            {(() => {
-              const { groups, qbGroup, qbEnabled } = groupsFromRules(settings.scoringRules);
-              return <RuleFieldsets groups={groups} qbGroup={qbGroup} qbEnabled={qbEnabled} />;
-            })()}
-          </ActionForm>
+    <div>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">{league.name}</div>
+          <h1 className="display">Settings</h1>
+          <div className="sub">
+            Read-only. Leagues are administered centrally — settings changes re-score every
+            posted week automatically.
+          </div>
         </div>
-      </section>
+      </header>
 
-      <section className="rounded-lg border border-line p-5">
-        <h2 className="display text-xl">Roster slots</h2>
-        <div className="mt-4">
-          <ActionForm action={updateRosterAction} submitLabel="Save roster" successMessage="Saved">
-            <input type="hidden" name="slug" value={slug} />
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-              {ACTIVE_SLOTS.map((slot) => (
-                <label key={slot} className="flex flex-col gap-1 text-sm">
-                  {slot}
-                  <input
-                    name={`slot_${slot}`}
-                    type="number"
-                    min={0}
-                    max={20}
-                    defaultValue={slotCounts.get(slot) ?? 0}
-                    className={inputClass}
-                  />
-                </label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="panel">
+          <div className="ptitle">
+            <span className="t">League</span>
+          </div>
+          <table className="tbl">
+            <tbody>
+              <tr>
+                <td className="dim">Name</td>
+                <td className="r tm">{league.name}</td>
+              </tr>
+              <tr>
+                <td className="dim">Season</td>
+                <td className="r num">{league.season}</td>
+              </tr>
+              <tr>
+                <td className="dim">Teams</td>
+                <td className="r num">{league.numTeams}</td>
+              </tr>
+              <tr>
+                <td className="dim">Status</td>
+                <td className="r">{league.status.replace("_", " ")}</td>
+              </tr>
+              {admin && (
+                <tr>
+                  <td className="dim">Invite code</td>
+                  <td className="r">
+                    <span className="num font-mono text-flame">{league.inviteCode}</span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="panel">
+          <div className="ptitle">
+            <span className="t">Roster template</span>
+          </div>
+          <table className="tbl">
+            <tbody>
+              {settings.rosterTemplate.slots.map((s) => (
+                <tr key={s.slot}>
+                  <td className="dim">{s.slot}</td>
+                  <td className="r num">{s.count}</td>
+                </tr>
               ))}
-            </div>
-          </ActionForm>
+            </tbody>
+          </table>
         </div>
-      </section>
+      </div>
 
-      <section className="rounded-lg border border-line p-5">
-        <h2 className="display text-xl">Draft, waivers &amp; playoffs</h2>
-        <div className="mt-4">
-          <ActionForm action={updateConfigsAction} submitLabel="Save configs" successMessage="Saved">
-            <input type="hidden" name="slug" value={slug} />
-            <div className="grid gap-4 sm:grid-cols-3">
-              <label className="flex flex-col gap-1 text-sm">
-                Seconds per pick
-                <input
-                  name="secondsPerPick"
-                  type="number"
-                  min={30}
-                  defaultValue={settings.draftConfig.secondsPerPick}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Draft order
-                <select name="orderMode" defaultValue={settings.draftConfig.orderMode} className={inputClass}>
-                  <option value="random">Random</option>
-                  <option value="manual">Manual</option>
-                  <option value="reverse_standings">Reverse standings</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Rounds
-                <input
-                  name="rounds"
-                  type="number"
-                  min={1}
-                  max={40}
-                  defaultValue={settings.draftConfig.rounds}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm sm:col-span-3">
-                <input
-                  name="thirdRoundReversal"
-                  type="checkbox"
-                  defaultChecked={settings.draftConfig.thirdRoundReversal}
-                />
-                Third-round reversal
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Waiver mode
-                <select name="waiverMode" defaultValue={settings.waiverConfig.mode} className={inputClass}>
-                  <option value="priority">Priority</option>
-                  <option value="faab">FAAB</option>
-                  <option value="none">None (free agency)</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Process day (0=Sun)
-                <input
-                  name="processDow"
-                  type="number"
-                  min={0}
-                  max={6}
-                  defaultValue={settings.waiverConfig.processDow}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Process hour (UTC)
-                <input
-                  name="processHourUtc"
-                  type="number"
-                  min={0}
-                  max={23}
-                  defaultValue={settings.waiverConfig.processHourUtc}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                FAAB budget
-                <input
-                  name="faabBudget"
-                  type="number"
-                  min={0}
-                  defaultValue={settings.waiverConfig.faabBudget}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Playoff teams
-                <input
-                  name="playoffTeams"
-                  type="number"
-                  min={2}
-                  max={16}
-                  defaultValue={settings.playoffConfig.teams}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Playoff start week
-                <input
-                  name="playoffStartWeek"
-                  type="number"
-                  min={1}
-                  max={18}
-                  defaultValue={settings.playoffConfig.startWeek}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Weeks per round
-                <input
-                  name="weeksPerRound"
-                  type="number"
-                  min={1}
-                  max={2}
-                  defaultValue={settings.playoffConfig.weeksPerRound}
-                  className={inputClass}
-                />
-              </label>
-            </div>
-          </ActionForm>
+      <div className="panel mt-4">
+        <div className="ptitle">
+          <span className="t">Scoring — {settings.scoringRules.preset === "fp_advanced" ? "FP Advanced" : (settings.scoringRules.preset ?? "custom").toUpperCase()}</span>
+          {admin && (
+            <Link href="/admin/scoring-lab" className="m">
+              Edit scoring in the Lab →
+            </Link>
+          )}
         </div>
-      </section>
+        <table className="tbl">
+          <tbody>
+            {ruleRows(settings.scoringRules).map(([rule, value]) => (
+              <tr key={rule}>
+                <td className="dim">{rule}</td>
+                <td className="r num">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="note px-[22px] py-3">
+          Points come from post-game charting — results post Tuesday 6:00 AM ET, final
+          Thursday noon.
+        </p>
+      </div>
+
+      {ctx.myTeam && (
+        <div className="panel mt-4">
+          <div className="ptitle">
+            <span className="t">My team</span>
+          </div>
+          <div className="px-[22px] py-4">
+            <ActionForm
+              action={renameTeamAction}
+              submitLabel="Rename"
+              successMessage="Saved"
+              className="flex items-end gap-3"
+            >
+              <input type="hidden" name="slug" value={slug} />
+              <label className="field !mb-0">
+                <span className="field-label label">Team name</span>
+                <input
+                  name="teamName"
+                  defaultValue={ctx.myTeam.name}
+                  required
+                  minLength={2}
+                  maxLength={40}
+                  className="input"
+                  style={{ width: 280 }}
+                />
+              </label>
+            </ActionForm>
+          </div>
+        </div>
+      )}
+
+      {admin && (
+        <div className="panel mt-4">
+          <div className="ptitle">
+            <span className="t">Admin controls</span>
+          </div>
+          <div className="grid divide-y divide-line md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="px-[22px] py-4">
+              <div className="label mb-2">Invite managers</div>
+              <div className="flex items-center gap-2.5">
+                <span className="num font-mono text-flame">{league.inviteCode}</span>
+                <CopyButton text={league.inviteCode} toast="Invite code copied" />
+              </div>
+              <p className="note mt-2">New managers paste this on the join screen.</p>
+            </div>
+            <div className="px-[22px] py-4">
+              <div className="label mb-2">Assign a manager</div>
+              <ActionForm action={assignUserAction} submitLabel="Assign" successMessage="Manager assigned">
+                <input type="hidden" name="slug" value={slug} />
+                <input name="email" type="email" required placeholder="user@email.com" className="input" />
+                <input name="teamName" maxLength={40} placeholder="Team name (optional)" className="input" />
+              </ActionForm>
+            </div>
+            <div className="px-[22px] py-4">
+              <div className="label mb-2">Schedule</div>
+              <ActionForm
+                action={generateScheduleAction}
+                submitLabel="Generate schedule"
+                successMessage="Schedule generated"
+              >
+                <input type="hidden" name="slug" value={slug} />
+              </ActionForm>
+              <p className="note mt-2">Replaces regular-season matchups — setup only.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {admin && (
+        <div className="panel mt-4">
+          <div className="ptitle">
+            <span className="t">Scoring rules (edit)</span>
+          </div>
+          <div className="px-[22px] py-4">
+            <ActionForm
+              action={updateScoringAction}
+              submitLabel="Save scoring"
+              successMessage="Saved — re-score queued"
+              className="flex flex-col gap-5"
+            >
+              <input type="hidden" name="slug" value={slug} />
+              {(() => {
+                const { groups, qbGroup, qbEnabled } = groupsFromRules(settings.scoringRules);
+                return <RuleFieldsets groups={groups} qbGroup={qbGroup} qbEnabled={qbEnabled} />;
+              })()}
+            </ActionForm>
+          </div>
+        </div>
+      )}
+      <div className="h-11" />
     </div>
   );
 }

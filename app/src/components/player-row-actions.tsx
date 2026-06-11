@@ -1,46 +1,76 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import {
   addPlayerAction,
   dropPlayerAction,
   type TxFormState,
 } from "@/lib/transactions/actions";
+import { fireToast } from "@/components/toast";
 
-const initialState: TxFormState = { error: null };
+type RowState = TxFormState & { done?: boolean };
+const initialState: RowState = { error: null };
 
-export function AddButton({ slug, gsisId }: { slug: string; gsisId: string }) {
-  const [state, formAction, pending] = useActionState(addPlayerAction, initialState);
+function RowForm({
+  action,
+  slug,
+  gsisId,
+  label,
+  primary,
+  toast,
+}: {
+  action: (prev: TxFormState, fd: FormData) => Promise<TxFormState>;
+  slug: string;
+  gsisId: string;
+  label: string;
+  primary?: boolean;
+  toast: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    async (prev: RowState, fd: FormData): Promise<RowState> => {
+      const r = await action(prev, fd);
+      return { ...r, done: r.error === null };
+    },
+    initialState,
+  );
+
+  useEffect(() => {
+    if (state.done) fireToast(toast);
+  }, [state, toast]);
+
   return (
     <form action={formAction} className="inline-flex items-center gap-2">
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="gsisId" value={gsisId} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded border border-line-strong px-2 py-0.5 text-xs text-paper hover:bg-surface disabled:opacity-50"
-      >
-        {pending ? "…" : "Add"}
+      <button type="submit" disabled={pending} className={`btn2 ${primary ? "pri" : ""}`}>
+        {pending ? "…" : label}
       </button>
       {state.error && <span className="text-xs text-flame">{state.error}</span>}
     </form>
   );
 }
 
-export function DropButton({ slug, gsisId }: { slug: string; gsisId: string }) {
-  const [state, formAction, pending] = useActionState(dropPlayerAction, initialState);
+export function AddButton({ slug, gsisId }: { slug: string; gsisId: string }) {
   return (
-    <form action={formAction} className="inline-flex items-center gap-2">
-      <input type="hidden" name="slug" value={slug} />
-      <input type="hidden" name="gsisId" value={gsisId} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded border border-flame/60 px-2 py-0.5 text-xs text-flame hover:bg-flame/10 disabled:opacity-50"
-      >
-        {pending ? "…" : "Drop"}
-      </button>
-      {state.error && <span className="text-xs text-flame">{state.error}</span>}
-    </form>
+    <RowForm
+      action={addPlayerAction}
+      slug={slug}
+      gsisId={gsisId}
+      label="Add"
+      primary
+      toast="Request submitted"
+    />
+  );
+}
+
+export function DropButton({ slug, gsisId }: { slug: string; gsisId: string }) {
+  return (
+    <RowForm
+      action={dropPlayerAction}
+      slug={slug}
+      gsisId={gsisId}
+      label="Drop"
+      toast="Player dropped"
+    />
   );
 }

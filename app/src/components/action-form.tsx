@@ -39,12 +39,8 @@ export function ActionForm({
       {!state.error && state.done && successMessage && (
         <p className="text-sm text-paper/80">{successMessage}</p>
       )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="self-start rounded-md btn-flame px-4 py-2 text-sm disabled:opacity-50"
-      >
-        {pending ? "…" : submitLabel}
+      <button type="submit" disabled={pending} className="btn pri self-start">
+        <span>{pending ? "…" : submitLabel}</span>
       </button>
     </form>
   );

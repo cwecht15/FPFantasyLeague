@@ -28,12 +28,14 @@ export function DraftBoard({
   picks,
   players,
   currentPickId,
+  myTeamId = null,
   compact = false,
 }: {
   teams: BoardTeam[];
   picks: BoardPick[];
   players: Map<string, BoardPlayer>;
   currentPickId: number | null;
+  myTeamId?: number | null;
   compact?: boolean;
 }) {
   const rounds = picks.length ? Math.max(...picks.map((p) => p.round)) : 0;
@@ -50,7 +52,7 @@ export function DraftBoard({
       <div
         className={`${pad} flex h-full min-h-[52px] flex-col justify-between rounded-md border ${
           isCurrent
-            ? "border-flame bg-flame/10"
+            ? "border-flame bg-flame text-paper"
             : player
               ? "border-line bg-surface"
               : "border-line/50 bg-pit"
@@ -71,7 +73,7 @@ export function DraftBoard({
             {pick.isAutopick && <span className="ml-1 text-[9px] font-normal text-faint">auto</span>}
           </div>
         ) : isCurrent ? (
-          <div className="display text-xs text-flame">On the clock</div>
+          <div className="display text-xs">On the clock</div>
         ) : (
           <div className="text-[10px] text-faint">—</div>
         )}
@@ -87,7 +89,11 @@ export function DraftBoard({
       >
         <div />
         {teams.map((t) => (
-          <div key={t.id} className="label truncate px-1 pb-1 text-center" title={t.name}>
+          <div
+            key={t.id}
+            className={`label truncate px-1 pb-1 text-center ${t.id === myTeamId ? "!text-flame" : ""}`}
+            title={t.name}
+          >
             {t.name}
           </div>
         ))}

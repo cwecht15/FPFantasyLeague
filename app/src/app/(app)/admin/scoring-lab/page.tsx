@@ -22,13 +22,17 @@ export default async function ScoringLabPage() {
 
   return (
     <div>
-      <h1 className="display text-3xl">Scoring Lab</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted">
-        Dial in scoring values — including advanced charting stats (accuracy, turnover-worthy
-        throws, hero plays, drops, air yards, YAC, missed tackles forced) — and score real
-        past-season stat lines to see who finishes where.
-      </p>
-      <div className="mt-6">
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">Admin</div>
+          <h1 className="display">Scoring Lab</h1>
+          <div className="sub">
+            Dial in scoring — including advanced charting stats — and score real past-season
+            stat lines to see who finishes where.
+          </div>
+        </div>
+      </header>
+      <div>
         {seasons.length === 0 ? (
           <p className="text-muted">
             No stat data loaded yet — run the scoring pipeline first.

@@ -6,9 +6,8 @@ import { db } from "@/lib/db";
 import { players, rosterEntries, teams } from "@/lib/db/schema";
 import { getLeagueForUser } from "@/lib/leagues/service";
 import { listTrades } from "@/lib/trades/service";
-import { proposeTradeAction } from "@/lib/trades/actions";
-import { ActionForm } from "@/components/action-form";
 import { RespondButtons, ResolveButtons } from "@/components/trade-buttons";
+import { TradeProposer, type TradePlayer } from "@/components/trade-proposer";
 
 const STATUS_LABEL: Record<string, string> = {
   proposed: "awaiting manager",
@@ -32,7 +31,6 @@ export default async function TradesPage({
   const admin = session.user.isSiteAdmin;
   const myTeamId = ctx.myTeam?.id ?? null;
 
-  // All active rosters in the league, grouped by team.
   const rosterRows = await db
     .select({
       teamId: rosterEntries.teamId,
@@ -44,10 +42,10 @@ export default async function TradesPage({
     .innerJoin(players, eq(players.gsisId, rosterEntries.gsisId))
     .where(and(eq(rosterEntries.leagueId, ctx.league.id), isNull(rosterEntries.droppedAt)))
     .orderBy(players.position, players.displayName);
-  const byTeam = new Map<number, typeof rosterRows>();
+  const byTeam = new Map<number, TradePlayer[]>();
   for (const r of rosterRows) {
     const arr = byTeam.get(r.teamId) ?? [];
-    arr.push(r);
+    arr.push({ gsisId: r.gsisId, name: r.name, position: r.position });
     byTeam.set(r.teamId, arr);
   }
 
@@ -56,47 +54,63 @@ export default async function TradesPage({
     .from(teams)
     .where(eq(teams.leagueId, ctx.league.id))
     .orderBy(teams.id);
-  const otherTeams = teamRows.filter((t) => t.id !== myTeamId);
+  const otherTeams = teamRows
+    .filter((t) => t.id !== myTeamId)
+    .map((t) => ({ ...t, roster: byTeam.get(t.id) ?? [] }));
   const myRoster = myTeamId ? (byTeam.get(myTeamId) ?? []) : [];
 
   const allTrades = await listTrades(ctx.league.id);
 
-  const selectClass =
-    "min-h-40 w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm";
+  const statusChip = (status: string) => {
+    const cls =
+      status === "applied"
+        ? "bg-flame text-paper"
+        : status === "proposed" || status === "accepted"
+          ? "bg-surface text-paper border border-line"
+          : "bg-pit text-faint border border-line";
+    return (
+      <span className={`display px-2.5 py-1 text-[11px] ${cls}`}>
+        {STATUS_LABEL[status] ?? status}
+      </span>
+    );
+  };
 
   return (
-    <div className="flex flex-col gap-10">
-      <section>
-        <h2 className="display text-xl">Trades</h2>
+    <div>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">{ctx.league.name}</div>
+          <h1 className="display">Trades</h1>
+          <div className="sub">
+            Manager accepts, site admin approves — rosters swap on approval.
+          </div>
+        </div>
+      </header>
+
+      <div className="panel">
+        <div className="ptitle">
+          <span className="t">Trades</span>
+        </div>
         {allTrades.length === 0 ? (
-          <p className="mt-3 text-muted">No trades yet.</p>
+          <p className="empty">No trades yet.</p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-3">
+          <div>
             {allTrades.map(({ trade, proposingTeam, receivingTeam, give, get }) => (
-              <li key={trade.id} className="rounded-lg border border-line p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm">
-                    <span className="font-bold">{proposingTeam}</span>
-                    <span className="text-muted"> sends </span>
-                    {give.map((p) => `${p.name} (${p.position})`).join(", ") || "—"}
-                    <span className="text-muted"> · </span>
-                    <span className="font-bold">{receivingTeam}</span>
-                    <span className="text-muted"> sends </span>
-                    {get.map((p) => `${p.name} (${p.position})`).join(", ") || "—"}
+              <div
+                key={trade.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-3.5 last:border-b-0"
+              >
+                <div className="text-[13.5px]">
+                  <b>{proposingTeam}</b> <span className="text-muted">sends</span>{" "}
+                  <b>{give.map((p) => `${p.name} (${p.position})`).join(", ") || "—"}</b>
+                  <span className="text-muted"> · </span>
+                  <b>{receivingTeam}</b> <span className="text-muted">sends</span>{" "}
+                  <b>{get.map((p) => `${p.name} (${p.position})`).join(", ") || "—"}</b>
+                  <div className="mt-1 text-[11.5px] text-faint">
+                    {trade.createdAt.toLocaleString()}
                   </div>
-                  <span
-                    className={`rounded px-2 py-0.5 text-xs font-bold ${
-                      trade.status === "applied"
-                        ? "bg-flame text-paper"
-                        : trade.status === "proposed" || trade.status === "accepted"
-                          ? "bg-surface text-paper"
-                          : "bg-pit text-faint"
-                    }`}
-                  >
-                    {STATUS_LABEL[trade.status] ?? trade.status}
-                  </span>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3">
                   {trade.status === "proposed" &&
                     myTeamId !== null &&
                     (trade.receivingTeamId === myTeamId || trade.proposingTeamId === myTeamId) && (
@@ -109,59 +123,17 @@ export default async function TradesPage({
                   {trade.status === "accepted" && admin && (
                     <ResolveButtons slug={slug} tradeId={trade.id} />
                   )}
-                  <span className="text-xs text-faint">
-                    {trade.createdAt.toLocaleString()}
-                  </span>
+                  {statusChip(trade.status)}
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {ctx.myTeam && (
-        <section>
-          <h2 className="display text-xl">Propose a trade</h2>
-          <p className="mt-2 text-sm text-muted">
-            Pick a team, select players from each side (Ctrl/Cmd-click for multiple), and
-            send it. The other manager accepts, then a site admin approves.
-          </p>
-          <div className="mt-4 flex flex-col gap-3">
-            {otherTeams.map((t) => (
-              <details key={t.id} className="rounded-lg border border-line p-4">
-                <summary className="cursor-pointer font-bold">{t.name}</summary>
-                <div className="mt-4">
-                  <ActionForm action={proposeTradeAction} submitLabel="Propose trade" successMessage="Trade proposed">
-                    <input type="hidden" name="slug" value={slug} />
-                    <input type="hidden" name="receivingTeamId" value={t.id} />
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="flex flex-col gap-1 text-sm">
-                        You send
-                        <select name="give" multiple className={selectClass}>
-                          {myRoster.map((p) => (
-                            <option key={p.gsisId} value={p.gsisId}>
-                              {p.name} ({p.position})
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-1 text-sm">
-                        You receive
-                        <select name="get" multiple className={selectClass}>
-                          {(byTeam.get(t.id) ?? []).map((p) => (
-                            <option key={p.gsisId} value={p.gsisId}>
-                              {p.name} ({p.position})
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </ActionForm>
-                </div>
-              </details>
+              </div>
             ))}
           </div>
-        </section>
+        )}
+      </div>
+
+      <div className="h-4" />
+      {ctx.myTeam && (
+        <TradeProposer slug={slug} myRoster={myRoster} otherTeams={otherTeams} />
       )}
     </div>
   );

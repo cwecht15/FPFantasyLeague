@@ -68,17 +68,29 @@ export async function getLeagueForUser(
 ): Promise<{ league: League; member: LeagueMember; myTeam: Team | null } | null> {
   const league = await getLeagueBySlug(slug);
   if (!league) return null;
-  if (league.isDemo) {
-    const { users } = await import("@/lib/db/schema");
-    const [u] = await db
-      .select({ isSiteAdmin: users.isSiteAdmin })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    if (!u?.isSiteAdmin) return null;
+
+  const { users } = await import("@/lib/db/schema");
+  const [u] = await db
+    .select({ isSiteAdmin: users.isSiteAdmin })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const isAdmin = u?.isSiteAdmin ?? false;
+
+  if (league.isDemo && !isAdmin) return null;
+
+  let member = await getMembership(league.id, userId);
+  if (!member) {
+    if (!isAdmin) return null;
+    // Site admins can open any league without enrolling in it.
+    member = {
+      id: 0,
+      leagueId: league.id,
+      userId,
+      role: "commissioner",
+      createdAt: new Date(),
+    };
   }
-  const member = await getMembership(league.id, userId);
-  if (!member) return null;
   const myTeam = await getMyTeam(league.id, userId);
   return { league, member, myTeam };
 }
@@ -102,7 +114,8 @@ export async function createLeague(opts: {
   season: number;
   numTeams: number;
   scoringPreset: string;
-  teamName: string;
+  /** Omit for centrally-run leagues — the admin gets membership, no team. */
+  teamName?: string;
   commissionerUserId: string;
   isDemo?: boolean;
 }): Promise<League> {
@@ -136,11 +149,13 @@ export async function createLeague(opts: {
       role: "commissioner",
     });
 
-    await tx.insert(teams).values({
-      leagueId: league.id,
-      ownerUserId: opts.commissionerUserId,
-      name: opts.teamName,
-    });
+    if (opts.teamName) {
+      await tx.insert(teams).values({
+        leagueId: league.id,
+        ownerUserId: opts.commissionerUserId,
+        name: opts.teamName,
+      });
+    }
 
     return league;
   });

@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+/* Numerals, scores, invite codes — per the Game Day handoff. */
+const jbMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jbmono",
+  display: "swap",
+});
 
 /* Brand typefaces (BrandStyleGuide v6): Kanit ExtraBold Italic for display,
    Mulish for everything else. Loaded locally from the approved files. */
@@ -28,7 +36,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${kanit.variable} ${mulish.variable}`}>
+    <html lang="en" className={`${kanit.variable} ${mulish.variable} ${jbMono.variable}`}>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );

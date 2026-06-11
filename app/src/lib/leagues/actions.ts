@@ -40,9 +40,15 @@ const CURRENT_SEASON = Number(process.env.CURRENT_SEASON ?? new Date().getFullYe
 // ---------------------------------------------------------------------------
 
 // House format: 12-team leagues on the FP Advanced preset by default.
+// teamName optional — admin-created leagues don't enroll the admin as a team.
 const createSchema = z.object({
   name: z.string().trim().min(3, "League name must be at least 3 characters").max(60),
-  teamName: z.string().trim().min(2, "Team name must be at least 2 characters").max(40),
+  teamName: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .transform((v) => (v ? v : undefined)),
   numTeams: z.coerce.number().int().min(4).max(20).default(12),
   scoringPreset: z.string().default("fp_advanced"),
 });

@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   FantasyPoints brand system — BrandStyleGuide v6.
+   FantasyPoints brand system — BrandStyleGuide v6, "Game Day" direction.
    Three colors, nothing more: #111111 / #F0F0F0 / #CC3333 (60/30/10).
    Kanit ExtraBold Italic = display only. Mulish = every other glyph.
-   Elevation + structure derive from paper-on-ink alpha, never new hues.
+   JetBrains Mono = numerals, scores, codes. Canonical pattern source:
+   design/design_handoff_gameday_redesign/proto/brand.css
 --------------------------------------------------------------------------- */
 
 @theme {
@@ -23,6 +24,7 @@
 
   --font-display: var(--font-kanit), "Kanit", sans-serif;
   --font-body: var(--font-mulish), "Mulish", sans-serif;
+  --font-mono: var(--font-jbmono), "JetBrains Mono", monospace;
 }
 
 html {
@@ -57,14 +59,53 @@ body {
   color: var(--color-faint);
 }
 
+/* Red Kanit eyebrow above page titles. */
+.eyebrow {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-flame);
+}
+
+/* ---- page scaffolding ----------------------------------------------------- */
+
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 36px 0 20px;
+}
+.page-head h1 {
+  margin: 6px 0 0;
+  font-size: 56px;
+}
+.page-head .sub {
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 14.5px;
+}
+.page-head .sub b {
+  color: var(--color-paper);
+}
+
 /* ---- brand motifs --------------------------------------------------------- */
 
-/* Red ticker bar — the site-banner treatment from the guide. */
 .ticker {
   background: var(--color-flame);
   color: var(--color-paper);
   font-family: var(--font-display);
   font-style: italic;
+  font-weight: 600;
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.08em;
@@ -75,7 +116,7 @@ body {
 .ticker-track {
   display: inline-block;
   padding: 6px 0;
-  animation: ticker-scroll 28s linear infinite;
+  animation: ticker-scroll 36s linear infinite;
 }
 @keyframes ticker-scroll {
   from {
@@ -85,32 +126,182 @@ body {
     transform: translateX(-50%);
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
 
-/* Red kickoff rule — a 2px divider that announces a section. */
 .red-rule {
   height: 2px;
   background: var(--color-flame);
 }
 
-/* Smoke atmosphere for marketing surfaces (subtle, ink-on-ink). */
 .smoke {
   background-image:
-    linear-gradient(rgba(17, 17, 17, 0.82), rgba(17, 17, 17, 0.94)),
+    linear-gradient(rgba(17, 17, 17, 0.8), rgba(17, 17, 17, 0.95)),
     url("/brand/Primary-Smoke.jpg");
   background-size: cover;
   background-position: center;
 }
 
-/* Slanted chip — italic momentum carried into UI furniture. */
-.slant {
-  transform: skewX(-8deg);
+/* ---- top nav -------------------------------------------------------------- */
+
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
 }
-.slant > * {
+.topnav .right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.topnav .lk {
+  color: var(--color-muted);
+}
+.topnav .lk:hover,
+.topnav .lk.on {
+  color: var(--color-paper);
+}
+.topnav .badge {
+  display: inline-block;
+  margin-left: 5px;
+  background: var(--color-flame);
+  color: var(--color-paper);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  vertical-align: 2px;
+}
+.topnav .who {
+  color: var(--color-faint);
+  font-weight: 400;
+}
+
+/* ---- league tabs ----------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-line);
+  overflow-x: auto;
+}
+.tabs a {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+  padding: 10px 15px;
+  white-space: nowrap;
+}
+.tabs a:hover {
+  color: var(--color-paper);
+}
+.tabs a.on {
+  color: var(--color-paper);
+  box-shadow: inset 0 -3px 0 var(--color-flame);
+}
+
+/* ---- slant chip + buttons -------------------------------------------------- */
+
+.chip {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-paper);
+  background: var(--color-flame);
+  padding: 8px 18px;
+  transform: skewX(-8deg);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.chip > * {
   transform: skewX(8deg);
 }
 
-/* ---- shared controls ------------------------------------------------------ */
+.btn {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 9px 20px;
+  cursor: pointer;
+  transform: skewX(-8deg);
+  border: none;
+  white-space: nowrap;
+  display: inline-block;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.btn > span {
+  display: inline-block;
+  transform: skewX(8deg);
+}
+.btn.pri {
+  background: var(--color-flame);
+  color: var(--color-paper);
+}
+.btn.pri:hover {
+  opacity: 0.88;
+}
+.btn.pri:active {
+  transform: skewX(-8deg) translateY(1px);
+}
+.btn.gho {
+  background: transparent;
+  color: var(--color-paper);
+  border: 1px solid var(--color-line-strong);
+}
+.btn.gho:hover {
+  background: var(--color-surface);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
+/* small rectangular button (row actions, nav) */
+.btn2 {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 4px;
+  padding: 5px 12px;
+  cursor: pointer;
+  border: 1px solid var(--color-line-strong);
+  background: transparent;
+  color: var(--color-paper);
+  transition: background 120ms ease;
+}
+.btn2:hover {
+  background: var(--color-surface);
+}
+.btn2.pri {
+  background: var(--color-flame);
+  border-color: var(--color-flame);
+}
+.btn2.pri:hover {
+  opacity: 0.88;
+}
+.btn2:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* legacy aliases used by early pages — keep behavior, new skin */
 .btn-flame {
   background: var(--color-flame);
   color: var(--color-paper);
@@ -123,7 +314,6 @@ body {
 .btn-flame:active {
   transform: translateY(1px);
 }
-
 .btn-ghost {
   border: 1px solid var(--color-line-strong);
   color: var(--color-paper);
@@ -134,23 +324,313 @@ body {
   border-color: var(--color-paper);
 }
 
-.input {
+/* ---- panels ----------------------------------------------------------------- */
+
+.panel {
+  background: var(--color-pit);
+  border: 1px solid var(--color-line);
+}
+.ptitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--color-line);
+  gap: 12px;
+}
+.ptitle .t {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 17px;
+}
+.ptitle .m {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+.ptitle a.m:hover {
+  color: var(--color-paper);
+}
+
+/* ---- tables ------------------------------------------------------------------ */
+
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.tbl th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+  padding: 11px 14px 8px;
+  border-bottom: 1px solid var(--color-line-strong);
+  white-space: nowrap;
+}
+.tbl th.r,
+.tbl td.r {
+  text-align: right;
+}
+.tbl td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--color-line);
+}
+.tbl tr:last-child td {
+  border-bottom: none;
+}
+.tbl tbody tr.hov:hover td {
+  background: var(--color-surface);
+}
+.tbl tr.you td {
+  background: rgba(204, 51, 51, 0.1);
+}
+.tbl td.rk {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  color: var(--color-faint);
+  width: 36px;
+}
+.tbl tr.you td.rk {
+  color: var(--color-flame);
+}
+.tbl td.tm {
+  font-weight: 800;
+}
+.tbl td.num {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.tbl td.dim {
+  color: var(--color-faint);
+}
+
+.youchip {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--color-flame);
+  border: 1px solid rgba(204, 51, 51, 0.5);
+  padding: 1.5px 6px;
+  margin-left: 8px;
+  vertical-align: 1.5px;
+}
+
+/* ---- inputs ------------------------------------------------------------------- */
+
+.input,
+select.input,
+textarea.input {
   border: 1px solid var(--color-line-strong);
   background: var(--color-surface);
   color: var(--color-paper);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 14px;
+  font-family: var(--font-body);
 }
 .input:focus {
   outline: none;
   border-color: var(--color-paper);
 }
+.input.code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+}
+.input::placeholder {
+  color: var(--color-faint);
+}
 
-/* number spinners stay quiet on dark */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.field label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+.field .input {
+  width: 100%;
+}
+
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   opacity: 0.4;
+}
+
+/* ---- filter pills ---------------------------------------------------------------- */
+
+.pill {
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 4px;
+  padding: 5px 12px;
+  cursor: pointer;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-muted);
+  display: inline-block;
+}
+.pill:hover {
+  background: var(--color-surface);
+}
+.pill.on {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border-color: var(--color-paper);
+}
+
+/* ---- position tag / result square / stat tiles ------------------------------------ */
+
+.pos {
+  display: inline-block;
+  min-width: 30px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-muted);
+  padding: 2px 5px;
+}
+.pos.QB {
+  border-color: rgba(204, 51, 51, 0.55);
+  color: var(--color-flame);
+}
+
+.res {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+}
+.res.W {
+  background: var(--color-flame);
+  color: var(--color-paper);
+}
+.res.L {
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-muted);
+}
+
+.stat .v {
+  font-size: 16px;
+  font-weight: 800;
+}
+.stat .k {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-faint);
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+/* ---- toast -------------------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) skewX(-8deg);
+  background: var(--color-flame);
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+  padding: 10px 26px;
+  z-index: 50;
+  animation: toast-in 160ms ease;
+}
+.toast > span {
+  display: inline-block;
+  transform: skewX(8deg);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) skewX(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) skewX(-8deg);
+  }
+}
+
+/* ---- auth stage ----------------------------------------------------------------------- */
+
+.login-stage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.login-card {
+  width: 400px;
+  max-width: calc(100vw - 48px);
+  background: var(--color-pit);
+  border: 1px solid var(--color-line);
+  border-top: 2px solid var(--color-flame);
+  padding: 36px 36px 30px;
+}
+.login-card h1 {
+  margin: 0 0 4px;
+  font-size: 30px;
+  text-align: center;
+}
+.login-card .lsub {
+  text-align: center;
+  color: var(--color-faint);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+/* ---- misc -------------------------------------------------------------------------------- */
+
+.empty {
+  color: var(--color-faint);
+  font-size: 13.5px;
+  padding: 26px 22px;
+}
+.note {
+  font-size: 12.5px;
+  color: var(--color-faint);
+}
+.note b {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+.linkish {
+  color: var(--color-paper);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* slanted container (legacy alias) */
+.slant {
+  transform: skewX(-8deg);
+}
+.slant > * {
+  transform: skewX(8deg);
 }
 
 ::selection {

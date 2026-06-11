@@ -42,59 +42,78 @@ export default async function TransactionsPage({
     .orderBy(desc(transactions.createdAt))
     .limit(100);
 
+  const typeLabel: Record<string, string> = {
+    waiver: "Waiver",
+    trade: "Trade",
+    add: "Free agent",
+    add_drop: "Free agent",
+    drop: "Drop",
+    draft: "Draft",
+  };
+
   return (
-    <div className="flex flex-col gap-8">
+    <div>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">{ctx.league.name}</div>
+          <h1 className="display">Transactions</h1>
+        </div>
+      </header>
+
       {pending.length > 0 && (
-        <section>
-          <h2 className="display text-xl">Pending waiver claims</h2>
-          <ul className="mt-3 flex flex-col gap-1 text-sm">
+        <>
+          <div className="panel">
+            <div className="ptitle">
+              <span className="t">Pending waiver claims</span>
+            </div>
             {pending.map((c) => (
-              <li key={c.id} className="rounded border border-line px-3 py-1.5">
-                <span className="text-muted">{teamName.get(c.teamId)}</span> claims{" "}
-                <span className="font-medium">{pn(c.addGsisId)}</span>
-                {c.dropGsisId && <> (dropping {pn(c.dropGsisId)})</>}
-                {c.bidAmount !== null && <> — bid ${c.bidAmount}</>}
-                <span className="ml-2 text-xs text-faint">
+              <div
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-3 text-[13.5px] last:border-b-0"
+              >
+                <span>
+                  <span className="text-muted">{teamName.get(c.teamId)}</span> claims{" "}
+                  <b>{pn(c.addGsisId)}</b>
+                  {c.dropGsisId && <span className="text-muted"> (dropping {pn(c.dropGsisId)})</span>}
+                  {c.bidAmount !== null && (
+                    <span className="num font-mono"> · ${c.bidAmount}</span>
+                  )}
+                </span>
+                <span className="text-[11.5px] text-faint">
                   processes {c.processAfter.toLocaleString()}
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
-        </section>
+          </div>
+          <div className="h-4" />
+        </>
       )}
 
-      <section>
-        <h2 className="display text-xl">Transaction history</h2>
+      <div className="panel">
+        <div className="ptitle">
+          <span className="t">History</span>
+        </div>
         {history.length === 0 ? (
-          <p className="mt-3 text-muted">No transactions yet.</p>
+          <p className="empty">No transactions yet.</p>
         ) : (
-          <ul className="mt-3 flex flex-col gap-1 text-sm">
-            {history.map((t) => (
-              <li key={t.id} className="rounded border border-line px-3 py-1.5">
-                <span className="mr-2 rounded bg-surface px-1.5 py-0.5 text-xs uppercase text-muted">
-                  {t.type}
+          history.map((t) => (
+            <div
+              key={t.id}
+              className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-3 text-[13.5px] last:border-b-0"
+            >
+              <span className="flex items-center gap-3">
+                <span className="display border border-line px-2 py-0.5 text-[10.5px] text-muted">
+                  {typeLabel[t.type] ?? t.type}
                 </span>
                 <span className="text-muted">{t.teamId ? teamName.get(t.teamId) : "—"}</span>
-                {t.addGsisId && (
-                  <>
-                    {" "}
-                    + <span className="font-medium">{pn(t.addGsisId)}</span>
-                  </>
-                )}
-                {t.dropGsisId && (
-                  <>
-                    {" "}
-                    − <span className="font-medium">{pn(t.dropGsisId)}</span>
-                  </>
-                )}
-                <span className="ml-2 text-xs text-faint">
-                  {t.createdAt.toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
+                {t.addGsisId && <b>+{pn(t.addGsisId)}</b>}
+                {t.dropGsisId && <span className="text-faint">−{pn(t.dropGsisId)}</span>}
+              </span>
+              <span className="text-[11.5px] text-faint">{t.createdAt.toLocaleString()}</span>
+            </div>
+          ))
         )}
-      </section>
+      </div>
     </div>
   );
 }

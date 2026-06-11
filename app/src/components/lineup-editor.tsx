@@ -1,41 +1,39 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { saveLineupAction, type SlotFormState } from "@/lib/lineups/actions";
 import type { RosteredPlayer, SlotView } from "@/lib/lineups/service";
+import { fireToast } from "@/components/toast";
+import { fmt1, fmtKick } from "@/lib/format";
 
 const initialState: SlotFormState = { error: null };
 
-function fmtKickoff(d: Date | string | null): string {
-  if (!d) return "";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString(undefined, {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-/** One form for the whole lineup: change any number of slots, hit Save once.
- *  Locked slots render read-only; everything else is a select. */
+/** Game Day lineup editor: one form, panel tables, single SET LINEUP submit.
+ *  Past weeks render read-only with points; locked slots show a LOCKED tag. */
 export function LineupEditor({
   slots,
   roster,
   eligibility,
   slug,
   week,
+  editable,
 }: {
   slots: SlotView[];
   roster: RosteredPlayer[];
-  /** slot name -> allowed positions ([] = any). */
   eligibility: Record<string, string[]>;
   slug: string;
   week: number;
+  editable: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveLineupAction, initialState);
 
+  useEffect(() => {
+    if (state.notice) fireToast(state.notice);
+  }, [state]);
+
   const starters = slots.filter((s) => s.slot !== "BENCH" && s.slot !== "IR");
   const bench = slots.filter((s) => s.slot === "BENCH" || s.slot === "IR");
+  const allScored = starters.some((s) => s.points !== null);
   const starterTotal = starters.reduce((sum, s) => sum + (s.points ?? 0), 0);
 
   const candidatesFor = (slot: SlotView): RosteredPlayer[] => {
@@ -44,91 +42,110 @@ export function LineupEditor({
     return roster.filter((p) => allowed.includes(p.position));
   };
 
+  const playerText = (s: SlotView) =>
+    s.playerName ? (
+      <span className="font-bold">
+        {s.playerName}{" "}
+        <span className="font-normal text-faint">
+          ({s.position}
+          {s.nflTeam ? ` · ${s.nflTeam}` : ""})
+        </span>
+      </span>
+    ) : (
+      <span className="text-faint">empty</span>
+    );
+
   const row = (slot: SlotView) => (
-    <tr key={slot.slotId} className="border-b border-line">
-      <td className="px-2 py-1.5 font-mono text-xs text-muted">
-        {slot.slot}
-        {slot.slotIndex > 0 ? ` ${slot.slotIndex + 1}` : ""}
+    <tr key={slot.slotId}>
+      <td className="num dim" style={{ fontSize: 11.5, width: 70 }}>
+        {slot.slot === "BENCH" ? "BN" : slot.slot}
+        {slot.slot !== "BENCH" && slot.slot !== "IR" && slot.slotIndex > 0
+          ? ` ${slot.slotIndex + 1}`
+          : ""}
       </td>
-      <td className="px-2 py-1.5">
-        {slot.locked ? (
+      <td>
+        {!editable || slot.locked ? (
           <span>
-            {slot.playerName ?? <span className="text-faint">empty</span>}
-            <span className="ml-2 text-xs text-faint">🔒 locked</span>
+            {playerText(slot)}
+            {slot.locked && editable && (
+              <span className="dim ml-2 text-[11px]">LOCKED</span>
+            )}
           </span>
         ) : (
           <select
             name={`slot_${slot.slotId}`}
             defaultValue={slot.gsisId ?? ""}
-            className="w-full max-w-xs rounded-md border border-line-strong bg-surface px-2 py-1 text-sm"
+            className="input max-w-[320px]"
+            style={{ padding: "5px 10px", fontSize: 13.5 }}
           >
             <option value="">— empty —</option>
             {candidatesFor(slot).map((p) => (
               <option key={p.gsisId} value={p.gsisId} disabled={p.locked && p.gsisId !== slot.gsisId}>
                 {p.name} ({p.position}
-                {p.nflTeam ? ` · ${p.nflTeam}` : ""}){p.locked ? " 🔒" : ""}
+                {p.nflTeam ? ` · ${p.nflTeam}` : ""}){p.locked ? " — locked" : ""}
               </option>
             ))}
           </select>
         )}
       </td>
-      <td className="px-2 py-1.5 text-xs text-faint">
-        {slot.gsisId ? fmtKickoff(slot.kickoffAt) : ""}
+      <td className="dim" style={{ fontSize: 12, width: 120 }}>
+        {slot.gsisId ? `${fmtKick(slot.kickoffAt)}` : ""}
       </td>
-      <td className="px-2 py-1.5 text-right font-medium">
-        {slot.points !== null ? slot.points.toFixed(2) : "—"}
+      <td className="r num" style={{ width: 80 }}>
+        {slot.gsisId ? (slot.points !== null ? fmt1(slot.points) : "—") : ""}
       </td>
     </tr>
   );
 
-  const table = (rows: SlotView[], label: string) => (
-    <div>
-      <h3 className="label text-sm">{label}</h3>
-      <table className="mt-2 w-full border-collapse text-sm">
+  const panel = (rowsToShow: SlotView[], title: string) => (
+    <div className="panel">
+      <div className="ptitle">
+        <span className="t">{title}</span>
+      </div>
+      <table className="tbl">
         <thead>
-          <tr className="border-b border-line-strong text-left text-xs text-faint">
-            <th className="px-2 py-1.5 w-20">Slot</th>
-            <th className="px-2 py-1.5">Player</th>
-            <th className="px-2 py-1.5 w-28">Kickoff</th>
-            <th className="px-2 py-1.5 w-20 text-right">Pts</th>
+          <tr>
+            <th style={{ width: 70 }}>Slot</th>
+            <th>Player</th>
+            <th style={{ width: 120 }}>Kickoff</th>
+            <th className="r" style={{ width: 80 }}>
+              Pts
+            </th>
           </tr>
         </thead>
-        <tbody>{rows.map(row)}</tbody>
+        <tbody>{rowsToShow.map(row)}</tbody>
       </table>
     </div>
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction}>
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="week" value={week} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3.5 mt-1 flex items-center justify-between">
         <span className="text-sm text-muted">
           Starter total:{" "}
-          <span className="font-semibold text-paper">{starterTotal.toFixed(2)}</span>
+          <b className="font-mono text-base text-paper">
+            {allScored ? fmt1(starterTotal) : "—"}
+          </b>
         </span>
         <div className="flex items-center gap-3">
           {state.error && <span className="text-sm text-flame">{state.error}</span>}
-          {!state.error && state.notice && (
-            <span className="text-sm text-paper/70">{state.notice}</span>
+          {editable && (
+            <button type="submit" disabled={pending} className="btn pri">
+              <span>{pending ? "Saving…" : "Set lineup"}</span>
+            </button>
           )}
-          <button
-            type="submit"
-            disabled={pending}
-            className="btn-flame rounded-md px-5 py-2 text-sm uppercase tracking-wide disabled:opacity-50"
-          >
-            {pending ? "Saving…" : "Set lineup"}
-          </button>
         </div>
       </div>
 
-      {table(starters, "Starters")}
-      {bench.length > 0 && table(bench, "Bench / IR")}
+      {panel(starters, "Starters")}
+      <div className="h-3.5" />
+      {panel(bench, "Bench / IR")}
+
       {roster.length === 0 && (
-        <p className="text-sm text-faint">
-          Your roster is empty — add players from the Players tab (or draft).
-        </p>
+        <p className="note mt-3">Your roster is empty — add players from the Players tab.</p>
       )}
     </form>
   );
