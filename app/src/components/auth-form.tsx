@@ -57,6 +57,10 @@ export function AuthForm({
             <Link href="/signup" className="underline">
               Create an account
             </Link>
+            {" · "}
+            <Link href="/forgot-password" className="underline">
+              Forgot password?
+            </Link>
           </>
         ) : (
           <>

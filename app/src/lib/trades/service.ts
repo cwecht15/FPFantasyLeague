@@ -55,6 +55,13 @@ export async function proposeTrade(opts: {
   if (give.length === 0 || get.length === 0) {
     return { error: "Both sides must include at least one player" };
   }
+
+  // Both teams must belong to THIS league (blocks cross-league IDOR).
+  const leagueTeams = await db
+    .select({ id: teams.id })
+    .from(teams)
+    .where(and(eq(teams.leagueId, leagueId), inArray(teams.id, [proposingTeamId, receivingTeamId])));
+  if (leagueTeams.length !== 2) return { error: "That team isn't in this league" };
   if (!(await ownsAll(proposingTeamId, give))) {
     return { error: "You no longer own all of those players" };
   }
@@ -91,11 +98,12 @@ export async function proposeTrade(opts: {
 /** Receiver accepts (→ awaiting admin) or rejects. Proposer may cancel. */
 export async function respondToTrade(opts: {
   tradeId: number;
+  leagueId: number; // the league the caller is acting within
   teamId: number; // the responding/cancelling team
   accept: boolean;
 }): Promise<{ error: string | null }> {
   const [t] = await db.select().from(trades).where(eq(trades.id, opts.tradeId)).limit(1);
-  if (!t) return { error: "Trade not found" };
+  if (!t || t.leagueId !== opts.leagueId) return { error: "Trade not found" };
   if (t.status !== "proposed") return { error: `Trade is already ${t.status}` };
 
   const isReceiver = t.receivingTeamId === opts.teamId;
@@ -122,11 +130,12 @@ export async function respondToTrade(opts: {
 /** Admin approval applies the swap atomically; veto kills it. */
 export async function resolveTrade(opts: {
   tradeId: number;
+  leagueId: number;
   approve: boolean;
   template: RosterTemplate;
 }): Promise<{ error: string | null }> {
   const [t] = await db.select().from(trades).where(eq(trades.id, opts.tradeId)).limit(1);
-  if (!t) return { error: "Trade not found" };
+  if (!t || t.leagueId !== opts.leagueId) return { error: "Trade not found" };
   if (t.status !== "accepted") return { error: `Trade is ${t.status}, not awaiting approval` };
 
   if (!opts.approve) {

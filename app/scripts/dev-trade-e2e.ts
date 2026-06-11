@@ -1,6 +1,6 @@
-/**
- * Trade engine E2E: propose → wrong-team accept rejected → receiver accepts →
- * admin approves → rosters swap, lineups cleared, ownership re-validated.
+﻿/**
+ * Trade engine E2E: propose -> wrong-team accept rejected -> receiver accepts ->
+ * admin approves -> rosters swap, lineups cleared, ownership re-validated.
  *
  * Run:  npx tsx scripts/dev-trade-e2e.ts
  */
@@ -91,7 +91,7 @@ async function main() {
     }
   }
 
-  // Put t1's tradable player into a lineup slot — it must be cleared on apply.
+  // Put t1's tradable player into a lineup slot - it must be cleared on apply.
   const view = await getLineupView(league.id, t1.id, 2025, 10, settings.rosterTemplate);
   if (!view.slots.some((sl) => sl.gsisId === a1)) fail("autofill should have placed a1");
 
@@ -106,15 +106,16 @@ async function main() {
   if (prop.error || !prop.tradeId) fail(`propose: ${prop.error}`);
 
   // Proposer cannot accept their own trade.
-  const selfAccept = await respondToTrade({ tradeId: prop.tradeId!, teamId: t1.id, accept: true });
+  const selfAccept = await respondToTrade({ tradeId: prop.tradeId!, leagueId: league.id, teamId: t1.id, accept: true });
   if (!selfAccept.error) fail("proposer accept should be rejected");
   console.log(`self-accept rejected: "${selfAccept.error}"`);
 
   // Receiver accepts; admin approves.
-  const acc = await respondToTrade({ tradeId: prop.tradeId!, teamId: t2.id, accept: true });
+  const acc = await respondToTrade({ tradeId: prop.tradeId!, leagueId: league.id, teamId: t2.id, accept: true });
   if (acc.error) fail(`accept: ${acc.error}`);
   const res = await resolveTrade({
     tradeId: prop.tradeId!,
+    leagueId: league.id,
     approve: true,
     template: settings.rosterTemplate,
   });

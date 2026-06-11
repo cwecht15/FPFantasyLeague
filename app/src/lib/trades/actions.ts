@@ -56,7 +56,12 @@ export async function respondTradeAction(
   const ctx = await getLeagueForUser(slug, user.id);
   if (!ctx?.myTeam) return { error: "You don't have a team in this league" };
 
-  const result = await respondToTrade({ tradeId, teamId: ctx.myTeam.id, accept });
+  const result = await respondToTrade({
+    tradeId,
+    leagueId: ctx.league.id,
+    teamId: ctx.myTeam.id,
+    accept,
+  });
   if (result.error) return { error: result.error };
   revalidatePath(`/leagues/${slug}/trades`);
   return { error: null };
@@ -76,7 +81,12 @@ export async function resolveTradeAction(
   if (!ctx) return { error: "League not found" };
 
   const settings = await getSettings(ctx.league.id);
-  const result = await resolveTrade({ tradeId, approve, template: settings.rosterTemplate });
+  const result = await resolveTrade({
+    tradeId,
+    leagueId: ctx.league.id,
+    approve,
+    template: settings.rosterTemplate,
+  });
   if (result.error) return { error: result.error };
   revalidatePath(`/leagues/${slug}/trades`);
   revalidatePath(`/leagues/${slug}/roster`);
