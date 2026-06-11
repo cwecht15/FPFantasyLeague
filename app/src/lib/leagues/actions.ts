@@ -228,6 +228,29 @@ export async function updateConfigsAction(
 }
 
 // ---------------------------------------------------------------------------
+// Admin: assign a registered user to this league
+// ---------------------------------------------------------------------------
+
+export async function assignUserAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const slug = String(formData.get("slug") ?? "");
+  const { league } = await requireAdmin(slug);
+
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Email required" };
+  const teamName = String(formData.get("teamName") ?? "").trim() || undefined;
+
+  const { assignUserToLeague } = await import("@/lib/leagues/service");
+  const result = await assignUserToLeague({ leagueId: league.id, email, teamName });
+  if (result.error) return { error: result.error };
+
+  revalidatePath(`/leagues/${slug}`);
+  return { error: null };
+}
+
+// ---------------------------------------------------------------------------
 // Admin: schedule generation
 // ---------------------------------------------------------------------------
 

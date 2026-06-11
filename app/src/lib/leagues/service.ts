@@ -60,13 +60,23 @@ export async function getMyTeam(leagueId: number, userId: string): Promise<Team 
   return t ?? null;
 }
 
-/** League + membership for an authorized page load; null = not a member. */
+/** League + membership for an authorized page load; null = not a member.
+ *  Demo leagues are admin-only: non-admins get null even if "members". */
 export async function getLeagueForUser(
   slug: string,
   userId: string,
 ): Promise<{ league: League; member: LeagueMember; myTeam: Team | null } | null> {
   const league = await getLeagueBySlug(slug);
   if (!league) return null;
+  if (league.isDemo) {
+    const { users } = await import("@/lib/db/schema");
+    const [u] = await db
+      .select({ isSiteAdmin: users.isSiteAdmin })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!u?.isSiteAdmin) return null;
+  }
   const member = await getMembership(league.id, userId);
   if (!member) return null;
   const myTeam = await getMyTeam(league.id, userId);
@@ -94,6 +104,7 @@ export async function createLeague(opts: {
   scoringPreset: string;
   teamName: string;
   commissionerUserId: string;
+  isDemo?: boolean;
 }): Promise<League> {
   const settings = defaultLeagueSettings(opts.scoringPreset);
   return db.transaction(async (tx) => {
@@ -106,6 +117,7 @@ export async function createLeague(opts: {
         numTeams: opts.numTeams,
         commissionerUserId: opts.commissionerUserId,
         inviteCode: newInviteCode(),
+        isDemo: opts.isDemo ?? false,
       })
       .returning();
 
@@ -175,12 +187,70 @@ export async function joinLeague(opts: {
   return { league };
 }
 
-export async function listMyLeagues(userId: string): Promise<League[]> {
+/** Admin-driven enrollment: put a registered user into a league, claiming the
+ *  first unclaimed team or creating one (capacity permitting). */
+export async function assignUserToLeague(opts: {
+  leagueId: number;
+  email: string;
+  teamName?: string;
+}): Promise<{ error: string | null; teamName?: string }> {
+  const { users } = await import("@/lib/db/schema");
+  const { sql } = await import("drizzle-orm");
+
+  const [user] = await db
+    .select({ id: users.id, displayName: users.displayName, name: users.name })
+    .from(users)
+    .where(sql`lower(${users.email}) = ${opts.email.trim().toLowerCase()}`)
+    .limit(1);
+  if (!user) return { error: "No account with that email — they need to sign up first" };
+
+  const existing = await getMembership(opts.leagueId, user.id);
+  if (existing) return { error: "They're already in this league" };
+
+  const [league] = await db.select().from(leagues).where(eq(leagues.id, opts.leagueId)).limit(1);
+  if (!league) return { error: "League not found" };
+
+  const leagueTeams = await db.select().from(teams).where(eq(teams.leagueId, opts.leagueId));
+  const unclaimed = leagueTeams.find((t) => !t.ownerUserId);
+  const fallbackName =
+    opts.teamName?.trim() || `Team ${user.displayName ?? user.name ?? "Manager"}`;
+
+  if (!unclaimed && leagueTeams.length >= league.numTeams) {
+    return { error: "League is full" };
+  }
+
+  return db.transaction(async (tx) => {
+    await tx.insert(leagueMembers).values({
+      leagueId: opts.leagueId,
+      userId: user.id,
+      role: "manager",
+    });
+    if (unclaimed) {
+      await tx
+        .update(teams)
+        .set({ ownerUserId: user.id, ...(opts.teamName?.trim() ? { name: opts.teamName.trim() } : {}) })
+        .where(eq(teams.id, unclaimed.id));
+      return { error: null, teamName: opts.teamName?.trim() || unclaimed.name };
+    }
+    await tx.insert(teams).values({
+      leagueId: opts.leagueId,
+      ownerUserId: user.id,
+      name: fallbackName,
+    });
+    return { error: null, teamName: fallbackName };
+  });
+}
+
+export async function listMyLeagues(userId: string, includeDemo = false): Promise<League[]> {
   const rows = await db
     .select({ league: leagues })
     .from(leagueMembers)
     .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id))
-    .where(eq(leagueMembers.userId, userId))
+    .where(
+      includeDemo
+        ? eq(leagueMembers.userId, userId)
+        : and(eq(leagueMembers.userId, userId), eq(leagues.isDemo, false)),
+    )
     .orderBy(leagues.createdAt);
   return rows.map((r) => r.league);
 }

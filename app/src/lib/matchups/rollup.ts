@@ -101,6 +101,17 @@ export async function rollupLeagueWeek(
   // re-scores from finalizing 0-0 ties for weeks a league never reached.
   if (!(await weekHasLineups(leagueId, season, week))) return 0;
 
+  // Locked weeks are FINAL: if every matchup is already decided, leave them.
+  {
+    const { isWeekDataLocked } = await import("@/lib/nfl/locks");
+    if (
+      (await isWeekDataLocked(season, week)) &&
+      weekMatchups.every((m) => m.status === "final")
+    ) {
+      return 0;
+    }
+  }
+
   const complete = await isWeekComplete(season, week);
 
   for (const m of weekMatchups) {

@@ -47,6 +47,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--skip-players", action="store_true")
     p.add_argument("--skip-schedule", action="store_true")
     p.add_argument("--test-conn", action="store_true", help="test both DB connections and exit")
+    p.add_argument("--force", action="store_true",
+                   help="overwrite a week even after its Thursday-noon lock")
     args = p.parse_args(argv)
 
     if args.test_conn:
@@ -72,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         skip_players=args.skip_players,
         skip_schedule=args.skip_schedule,
+        force=args.force,
     )
     print("[result]", result)
     return 0

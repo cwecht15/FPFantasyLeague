@@ -256,6 +256,8 @@ export const leagues = pgTable(
     status: leagueStatus("status").notNull().default("setup"),
     numTeams: integer("num_teams").notNull().default(12),
     visibility: visibility("visibility").notNull().default("private"),
+    /** Demo/sandbox leagues are visible to site admins only. */
+    isDemo: boolean("is_demo").notNull().default(false),
     inviteCode: text("invite_code").notNull(),
     parentLeagueId: bigint("parent_league_id", { mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

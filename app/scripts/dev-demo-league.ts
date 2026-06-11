@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Build a demo league showing the async draft mid-flight:
  *   - 4 teams: your admin account + 3 dummy managers
  *   - schedule generated, draft started (manual order, you pick 3rd)
  *   - picks 1-2 already made by the dummies (best available by 2025 production)
- *   - YOU are on the clock — open /leagues/<slug>/draft to try it
+ *   - YOU are on the clock â€” open /leagues/<slug>/draft to try it
  *
  * Run:  npx tsx scripts/dev-demo-league.ts
  * Re-runnable: deletes any prior league named 'FP Demo League' first.
@@ -29,7 +29,7 @@ async function main() {
     .from(s.users)
     .where(sql`lower(${s.users.email}) = ${ADMIN_EMAIL}`)
     .limit(1);
-  if (!admin) throw new Error(`admin ${ADMIN_EMAIL} not found — run db:seed first`);
+  if (!admin) throw new Error(`admin ${ADMIN_EMAIL} not found â€” run db:seed first`);
 
   // wipe a prior demo league
   const old = await db.select().from(s.leagues).where(eq(s.leagues.name, "FP Demo League"));
@@ -70,8 +70,9 @@ async function main() {
     scoringPreset: "fp_advanced",
     teamName: "Team Chris",
     commissionerUserId: admin.id,
+    isDemo: true, // visible to site admins only
   });
-  console.log(`league: ${league.name} → /leagues/${league.slug}`);
+  console.log(`league: ${league.name} â†’ /leagues/${league.slug}`);
 
   for (const d of dummies) {
     const userId = await ensureUser(d.email, d.user);
@@ -114,7 +115,7 @@ async function main() {
     console.log(`pick ${overall}: ${top.name} (${top.position}, ${top.nflTeam})`);
   }
 
-  console.log(`\nDemo ready — you are ON THE CLOCK at pick 3.`);
+  console.log(`\nDemo ready â€” you are ON THE CLOCK at pick 3.`);
   console.log(`Open: http://localhost:3100/leagues/${league.slug}/draft`);
   await pool.end();
 }

@@ -62,6 +62,7 @@ async function main() {
     scoringPreset: "fp_advanced",
     teamName: "Team Chris",
     commissionerUserId: admin.id,
+    isDemo: true, // visible to site admins only
   });
   console.log(`league: ${league.name} → /leagues/${league.slug}`);
 

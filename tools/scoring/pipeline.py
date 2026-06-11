@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -41,6 +43,46 @@ _NULLABLE_STATS = [
 _KEY = ["gsis_id", "season", "season_type", "week"]
 _STATS_COLS = _KEY + ["team"] + _NOT_NULL_INT + _NULLABLE_STATS + ["source_hash"]
 _HASH_COLS = _NOT_NULL_INT + _NULLABLE_STATS + ["team"]
+
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _next_thursday_noon_et(after_utc: datetime) -> datetime:
+    """First Thursday 12:00 America/New_York strictly after `after_utc`."""
+    probe = after_utc.astimezone(_ET)
+    for _ in range(9):
+        if probe.weekday() == 3:  # Thursday
+            candidate = probe.replace(hour=12, minute=0, second=0, microsecond=0)
+            if candidate.astimezone(timezone.utc) > after_utc:
+                return candidate.astimezone(timezone.utc)
+        probe += timedelta(days=1)
+    return after_utc + timedelta(days=7)  # defensive fallback
+
+
+def _stats_locked(dest, season: int, seas_type: str, week: int) -> bool:
+    """A pushed week becomes FINAL at noon ET on the Thursday after its last
+    kickoff — after that, never overwrite its stat lines (use --force to
+    override deliberately)."""
+    with dest.cursor() as cur:
+        cur.execute(
+            """SELECT max(kickoff_at) FROM nfl_games
+                WHERE season = %s AND season_type = %s AND week = %s""",
+            (season, seas_type, week),
+        )
+        (last_kick,) = cur.fetchone()
+        if last_kick is None:
+            return False
+        cur.execute(
+            """SELECT 1 FROM player_week_stats
+                WHERE season = %s AND season_type = %s AND week = %s LIMIT 1""",
+            (season, seas_type, week),
+        )
+        has_rows = cur.fetchone() is not None
+    if not has_rows:
+        return False  # first-time backfill of an old week is always allowed
+    lock_at = _next_thursday_noon_et(last_kick.astimezone(timezone.utc))
+    return datetime.now(timezone.utc) >= lock_at
 
 
 def _row_hash(row: pd.Series) -> str:
@@ -87,6 +129,7 @@ def run(
     dry_run: bool = False,
     skip_players: bool = False,
     skip_schedule: bool = False,
+    force: bool = False,
     progress_cb: Optional[Callable[[str], None]] = None,
 ) -> dict:
     log: Callable[[str], None] = progress_cb or print
@@ -153,6 +196,18 @@ def run(
         if games is not None and not games.empty:
             r = cloud_loader.upsert(dest, "nfl_games", games, ["game_id"])
             log(f"[push] nfl_games: {r}")
+
+        # Thursday-noon finality: once a pushed week's lock passes, its stat
+        # lines are immutable (corrections close Wed; lock lands Thu 12:00 ET).
+        if not force and _stats_locked(dest, season, seas_type, week):
+            log(f"[push] {season} {seas_type} W{week} is LOCKED — stats not "
+                f"overwritten (use --force to override)")
+            dest.commit()
+            result["changed"] = 0
+            result["locked"] = True
+            result["duration_sec"] = round(time.time() - started, 1)
+            history.record(params, ok=True, duration_sec=result["duration_sec"], result=result)
+            return result
 
         slice_params = {"season": season, "season_type": seas_type, "week": week}
         r = cloud_loader.upsert(

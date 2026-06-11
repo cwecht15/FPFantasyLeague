@@ -27,6 +27,31 @@ export async function scoreWeekForLeague(
   seasonType: string,
   week: number,
 ): Promise<number> {
+  // Locked weeks are FINAL: once scored, never recomputed (Thursday-noon rule).
+  // A league that has never scored the week (e.g. created later) may still
+  // compute it for the first time.
+  if (seasonType === "REG") {
+    const { isWeekDataLocked } = await import("@/lib/nfl/locks");
+    if (await isWeekDataLocked(season, week)) {
+      const [existing] = await db
+        .select({ gsisId: playerWeekScores.gsisId })
+        .from(playerWeekScores)
+        .where(
+          and(
+            eq(playerWeekScores.leagueId, leagueId),
+            eq(playerWeekScores.season, season),
+            eq(playerWeekScores.seasonType, seasonType),
+            eq(playerWeekScores.week, week),
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        console.log(`[score_week] league=${leagueId} ${season} W${week}: locked — skipped`);
+        return 0;
+      }
+    }
+  }
+
   const [settings] = await db
     .select({ rules: leagueSettings.scoringRules, version: leagueSettings.version })
     .from(leagueSettings)

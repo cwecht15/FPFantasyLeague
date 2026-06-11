@@ -12,7 +12,8 @@ const inputClass =
 
 export default async function LeaguesPage() {
   const user = await requireUser();
-  const myLeagues = await listMyLeagues(user.id);
+  // Demo leagues surface for site admins only.
+  const myLeagues = await listMyLeagues(user.id, user.isSiteAdmin);
 
   return (
     <div className="flex flex-col gap-10">

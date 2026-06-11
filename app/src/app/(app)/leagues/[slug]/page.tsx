@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getLeagueForUser, listTeams } from "@/lib/leagues/service";
-import { generateScheduleAction, renameTeamAction } from "@/lib/leagues/actions";
+import { assignUserAction, generateScheduleAction, renameTeamAction } from "@/lib/leagues/actions";
 import { ActionForm } from "@/components/action-form";
 
 export default async function LeagueHomePage({
@@ -48,6 +48,45 @@ export default async function LeagueHomePage({
             <code className="mt-2 inline-block rounded bg-surface px-3 py-1.5 font-mono text-flame">
               {ctx.league.inviteCode}
             </code>
+          </div>
+        )}
+
+        {commish && (
+          <div className="rounded-lg border border-line p-4">
+            <h3 className="font-semibold">Assign a manager</h3>
+            <p className="mt-2 text-sm text-muted">
+              Enroll a registered user into this league — they get the first unclaimed
+              team (or a new one). Regular users can&apos;t create leagues; this and the
+              invite code are how they get in.
+            </p>
+            <div className="mt-3">
+              <ActionForm
+                action={assignUserAction}
+                submitLabel="Assign"
+                successMessage="Manager assigned"
+              >
+                <input type="hidden" name="slug" value={slug} />
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex flex-col gap-1 text-sm">
+                    User email
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    Team name (optional)
+                    <input
+                      name="teamName"
+                      maxLength={40}
+                      className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-paper focus:outline-none"
+                    />
+                  </label>
+                </div>
+              </ActionForm>
+            </div>
           </div>
         )}
 

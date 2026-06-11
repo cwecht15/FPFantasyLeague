@@ -39,6 +39,7 @@ export async function lockChampionshipField(season: number): Promise<{
       and(
         eq(standings.season, season),
         eq(leagues.season, season),
+        eq(leagues.isDemo, false), // demo leagues never qualify
         lte(standings.rank, QUALIFIERS_PER_LEAGUE),
       ),
     );
