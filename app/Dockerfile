@@ -10,7 +10,8 @@ ARG NODE_VERSION=20-alpine
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 # bcryptjs is pure-JS; no native toolchain needed. (pg-native is excluded.)
-COPY package.json package-lock.json* ./
+# .npmrc carries legacy-peer-deps for next-auth v5 beta's stale peer range.
+COPY package.json package-lock.json* .npmrc ./
 RUN npm ci
 
 # ---- Stage 2: build (next standalone + worker bundle) ----
@@ -20,6 +21,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS=--max-old-space-size=4096
+# Build-time placeholders: page-data collection imports modules that assert
+# these exist. Never used at runtime (Fly secrets supply the real values),
+# and no DB connection is opened during build (pg pools connect lazily).
+ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
+ENV AUTH_SECRET=build-placeholder
 RUN npm run build
 
 # ---- Stage 3: lean runtime ----
