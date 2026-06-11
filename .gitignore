@@ -1,0 +1,18 @@
+# Python pipeline
+tools/scoring/.env
+tools/scoring/.dev_db_dsn
+tools/scoring/.venv/
+tools/scoring/history/
+__pycache__/
+*.pyc
+
+# Secrets (never commit)
+*.env
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
+tools/scoring/.dev_admin

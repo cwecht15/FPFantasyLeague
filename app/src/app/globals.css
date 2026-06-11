@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   FantasyPoints brand system — BrandStyleGuide v6.
+   Three colors, nothing more: #111111 / #F0F0F0 / #CC3333 (60/30/10).
+   Kanit ExtraBold Italic = display only. Mulish = every other glyph.
+   Elevation + structure derive from paper-on-ink alpha, never new hues.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* brand absolutes */
+  --color-ink: #111111; /* Brand Black — dark dominant */
+  --color-paper: #f0f0f0; /* Brand White — secondary on dark */
+  --color-flame: #cc3333; /* Brand Red — 10%, earned attention */
+
+  /* derived surfaces (ink family, alpha-stepped — no new hues) */
+  --color-pit: #161616; /* sunken panel */
+  --color-surface: #1b1b1b; /* raised panel / inputs */
+  --color-line: rgba(240, 240, 240, 0.14); /* hairline borders */
+  --color-line-strong: rgba(240, 240, 240, 0.28);
+  --color-muted: rgba(240, 240, 240, 0.64); /* secondary text */
+  --color-faint: rgba(240, 240, 240, 0.42); /* captions, hints */
+
+  --font-display: var(--font-kanit), "Kanit", sans-serif;
+  --font-body: var(--font-mulish), "Mulish", sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+/* ---- typography roles ---------------------------------------------------- */
+
+/* Kanit ExtraBold Italic, uppercase — headlines and display ONLY. */
+.display {
+  font-family: var(--font-display);
+  font-style: italic;
+  text-transform: uppercase;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+}
+
+/* Label / caption — Mulish, tracked uppercase, quiet. */
+.label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-faint);
+}
+
+/* ---- brand motifs --------------------------------------------------------- */
+
+/* Red ticker bar — the site-banner treatment from the guide. */
+.ticker {
+  background: var(--color-flame);
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  overflow: hidden;
+  white-space: nowrap;
+  user-select: none;
+}
+.ticker-track {
+  display: inline-block;
+  padding: 6px 0;
+  animation: ticker-scroll 28s linear infinite;
+}
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Red kickoff rule — a 2px divider that announces a section. */
+.red-rule {
+  height: 2px;
+  background: var(--color-flame);
+}
+
+/* Smoke atmosphere for marketing surfaces (subtle, ink-on-ink). */
+.smoke {
+  background-image:
+    linear-gradient(rgba(17, 17, 17, 0.82), rgba(17, 17, 17, 0.94)),
+    url("/brand/Primary-Smoke.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Slanted chip — italic momentum carried into UI furniture. */
+.slant {
+  transform: skewX(-8deg);
+}
+.slant > * {
+  transform: skewX(8deg);
+}
+
+/* ---- shared controls ------------------------------------------------------ */
+
+.btn-flame {
+  background: var(--color-flame);
+  color: var(--color-paper);
+  font-weight: 800;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.btn-flame:hover {
+  opacity: 0.88;
+}
+.btn-flame:active {
+  transform: translateY(1px);
+}
+
+.btn-ghost {
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-paper);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.btn-ghost:hover {
+  background: var(--color-surface);
+  border-color: var(--color-paper);
+}
+
+.input {
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface);
+  color: var(--color-paper);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-paper);
+}
+
+/* number spinners stay quiet on dark */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 0.4;
+}
+
+::selection {
+  background: var(--color-flame);
+  color: var(--color-paper);
+}
