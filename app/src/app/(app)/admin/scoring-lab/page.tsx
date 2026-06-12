@@ -133,6 +133,7 @@ export default async function ScoringLabPage({
             ["EPA / dropback", "Expected Points Added summed over every dropback (passes, sacks, scrambles), divided by dropbacks — multiplied by your factor (default ×10)."],
             ["EPA total", "The same weekly EPA sum, unscaled by volume — multiplied by your factor (e.g. ×2.5). The volume-based alternative to EPA/dropback."],
             ["PA / motion dropbacks (COACH)", "Team dropbacks off play-action, and team dropbacks with pre-snap or at-snap motion — from charting, credited to the team's coaching staff."],
+            ["4th-down go (COACH)", "Going for it on 4th down: any real pass or run snap on 4th down. Punts and FG attempts don't count (fakes do); kneels are excluded."],
             ["Team win / 30+ points (COACH)", "Flat bonuses on the coaching staff when the team wins (ties score zero) and when the offense finishes with 30 or more points."],
           ].map(([term, def]) => (
             <div key={term}>

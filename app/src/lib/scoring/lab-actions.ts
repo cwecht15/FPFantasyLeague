@@ -18,7 +18,10 @@ import { statRowToLine } from "@/lib/scoring/stat-row";
 import { rulesFromForm } from "@/lib/scoring/lab-form";
 
 export interface LabRow {
+  /** Overall rank across every position in the scope. */
   rank: number;
+  /** Rank within the player's own position (drives the leaderboard filter). */
+  posRank: number;
   gsisId: string;
   name: string;
   position: string;
@@ -35,6 +38,8 @@ export interface LabState {
   rows?: LabRow[];
   rulesUsed?: ScoringRules;
   scope?: string;
+  /** The "show top" cap — applied per position so the filter has full depth. */
+  limit?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,11 +149,19 @@ export async function runScoringLab(_prev: LabState, formData: FormData): Promis
     agg.set(r.stat.gsisId, cur);
   }
 
-  const ranked: LabRow[] = [...agg.entries()]
-    .sort((a, b) => b[1].points - a[1].points)
-    .slice(0, limit)
-    .map(([gsisId, p], i) => ({
+  // Keep the top `limit` of EACH position (not just overall) so the
+  // leaderboard's position filter has full depth without a re-run.
+  const sorted = [...agg.entries()].sort((a, b) => b[1].points - a[1].points);
+  const posSeen = new Map<string, number>();
+  const ranked: LabRow[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const [gsisId, p] = sorted[i];
+    const posRank = (posSeen.get(p.position) ?? 0) + 1;
+    posSeen.set(p.position, posRank);
+    if (posRank > limit) continue;
+    ranked.push({
       rank: i + 1,
+      posRank,
       gsisId,
       name: p.name,
       position: p.position,
@@ -159,12 +172,14 @@ export async function runScoringLab(_prev: LabState, formData: FormData): Promis
       components: Object.fromEntries(
         [...p.components.entries()].map(([k, v]) => [k, Math.round(v * 10) / 10]),
       ),
-    }));
+    });
+  }
 
   return {
     error: null,
     rows: ranked,
     rulesUsed: rules,
     scope: `${season} ${week > 0 ? `week ${week}` : "full season"} · ${position} · ${agg.size} players`,
+    limit,
   };
 }

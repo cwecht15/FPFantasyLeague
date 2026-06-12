@@ -1,0 +1,1 @@
+ALTER TABLE "player_week_stats" ADD COLUMN "fourth_down_attempts" integer;

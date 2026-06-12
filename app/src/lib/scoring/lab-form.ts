@@ -112,6 +112,7 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
     fields: [
       { name: "coachPaDropback", label: "Play-action dropback", default: DEFAULT_COACHING.paDropback, step: 0.05, hint: "every team dropback off play-action" },
       { name: "coachMotionDropback", label: "Dropback w/ motion", default: DEFAULT_COACHING.motionDropback, step: 0.05, hint: "every team dropback with pre-snap or at-snap motion" },
+      { name: "coachFourthDownGo", label: "4th-down go", default: DEFAULT_COACHING.fourthDownGo ?? 0, step: 0.25, hint: "going for it on 4th down — a real pass or run snap (fake punts/FGs count; kneels don't)" },
       { name: "coachWin", label: "Team win", default: DEFAULT_COACHING.win, step: 0.5, hint: "bonus when the team wins (ties score 0)" },
       { name: "coachScore30", label: "30+ points scored", default: DEFAULT_COACHING.score30Bonus, step: 0.5, hint: "bonus when the offense finishes with 30 or more points" },
     ],
@@ -188,6 +189,7 @@ function ruleValue(rules: ScoringRules, name: string): number | undefined {
     advYacoYd: a?.yacoYd ?? 0,
     coachPaDropback: c?.paDropback ?? DEFAULT_COACHING.paDropback,
     coachMotionDropback: c?.motionDropback ?? DEFAULT_COACHING.motionDropback,
+    coachFourthDownGo: c?.fourthDownGo ?? 0,
     coachWin: c?.win ?? DEFAULT_COACHING.win,
     coachScore30: c?.score30Bonus ?? DEFAULT_COACHING.score30Bonus,
     qbDeepYd: q?.deepYd ?? FP_QB_ADVANCED.deepYd,
@@ -267,6 +269,7 @@ export function rulesFromForm(formData: FormData): ScoringRules {
     coaching: {
       paDropback: num(formData, "coachPaDropback", DEFAULT_COACHING.paDropback),
       motionDropback: num(formData, "coachMotionDropback", DEFAULT_COACHING.motionDropback),
+      fourthDownGo: num(formData, "coachFourthDownGo", 0),
       win: num(formData, "coachWin", DEFAULT_COACHING.win),
       score30Bonus: num(formData, "coachScore30", DEFAULT_COACHING.score30Bonus),
     },

@@ -152,6 +152,9 @@ export const FP_QB_ADVANCED: QbAdvancedRules = {
 export interface CoachingRules {
   paDropback: number; // per play-action dropback
   motionDropback: number; // per dropback with pre/at-snap motion
+  /** Per 4th-down go-for-it snap — a real pass or run on 4th down (fake
+   *  punts/FGs count; kneels don't). Optional so older saved sets validate. */
+  fourthDownGo?: number;
   win: number; // bonus when the team wins
   score30Bonus: number; // bonus when the offense scores 30+ points
 }
@@ -159,6 +162,7 @@ export interface CoachingRules {
 export const DEFAULT_COACHING: CoachingRules = {
   paDropback: 0.2,
   motionDropback: 0.1,
+  fourthDownGo: 0,
   win: 5,
   score30Bonus: 10,
 };

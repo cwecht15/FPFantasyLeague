@@ -81,6 +81,13 @@ describe("scoreStatLine — coaching staff (COACH)", () => {
     const line = { paDropbacks: 5, motionDropbacks: 5 };
     expect(scoreStatLine(line, ppr).points).toBeCloseTo(5 * 0.2 + 5 * 0.1, 2);
   });
+
+  it("4th-down go-for-it scores per attempt when configured (default off)", () => {
+    const line = { fourthDownAttempts: 3 };
+    expect(scoreStatLine(line, ppr).points).toBeCloseTo(0, 2); // default 0 = off
+    const rules = { ...ppr, coaching: { ...ppr.coaching!, fourthDownGo: 2 } };
+    expect(scoreStatLine(line, rules).points).toBeCloseTo(6, 2);
+  });
 });
 
 describe("scoreStatLine — new advanced charting options", () => {

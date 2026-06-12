@@ -75,6 +75,7 @@ export interface RawStatLine {
   // ---- team coaching staff (only set on COACH rows) ----
   paDropbacks?: number;
   motionDropbacks?: number;
+  fourthDownAttempts?: number;
   teamWin?: number;
   teamPointsScored?: number;
   // ---- IDP (individual defender) ----
@@ -235,6 +236,7 @@ export function scoreStatLine(
     const c = rules.coaching;
     add("paDropbacks", n(stats.paDropbacks) * c.paDropback);
     add("motionDropbacks", n(stats.motionDropbacks) * c.motionDropback);
+    add("fourthDownGo", n(stats.fourthDownAttempts) * n(c.fourthDownGo));
     add("teamWin", n(stats.teamWin) * c.win);
     if (stats.teamPointsScored !== undefined && stats.teamPointsScored >= 30) {
       add("scored30Plus", c.score30Bonus);

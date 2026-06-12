@@ -1,15 +1,36 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { runScoringLab, saveScoringSet, type LabState } from "@/lib/scoring/lab-actions";
 import type { LabFieldGroup } from "@/lib/scoring/lab-form";
 import { RuleFieldsets } from "@/components/rules-fields";
 
 const initialState: LabState = { error: null };
 
+const POSITION_ORDER = ["QB", "RB", "WR", "TE", "COACH"];
+
 /** Full stat line: one column per scoring component present in the result set,
- *  ordered by total magnitude. Horizontally scrollable for wide rule sets. */
-function LabLeaderboard({ rows, scope }: { rows: NonNullable<LabState["rows"]>; scope?: string }) {
+ *  ordered by total magnitude. Horizontally scrollable for wide rule sets.
+ *  Position chips filter the returned rows instantly (server keeps the top
+ *  `limit` of every position, so each view has full depth). */
+function LabLeaderboard({
+  rows: allRows,
+  scope,
+  limit = 100,
+}: {
+  rows: NonNullable<LabState["rows"]>;
+  scope?: string;
+  limit?: number;
+}) {
+  const [posFilter, setPosFilter] = useState("ALL");
+  const present = new Set(allRows.map((r) => r.position));
+  const positions = POSITION_ORDER.filter((p) => present.has(p));
+
+  const rows =
+    posFilter === "ALL"
+      ? allRows.filter((r) => r.rank <= limit)
+      : allRows.filter((r) => r.position === posFilter);
+
   const totals = new Map<string, number>();
   for (const r of rows) {
     for (const [k, v] of Object.entries(r.components)) {
@@ -24,6 +45,20 @@ function LabLeaderboard({ rows, scope }: { rows: NonNullable<LabState["rows"]>; 
         <span className="t">Leaderboard</span>
         <span className="m">{scope}</span>
       </div>
+      {positions.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 px-[22px] pt-3">
+          {["ALL", ...positions].map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPosFilter(p)}
+              className={`btn2 ${posFilter === p ? "pri" : ""}`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse whitespace-nowrap text-sm">
           <thead>
@@ -45,7 +80,9 @@ function LabLeaderboard({ rows, scope }: { rows: NonNullable<LabState["rows"]>; 
           <tbody>
             {rows.map((r) => (
               <tr key={r.gsisId} className="border-b border-line hover:bg-pit">
-                <td className="sticky left-0 bg-ink px-2 py-1.5 text-faint">{r.rank}</td>
+                <td className="sticky left-0 bg-ink px-2 py-1.5 text-faint">
+                  {posFilter === "ALL" ? r.rank : r.posRank}
+                </td>
                 <td className="sticky left-8 bg-ink px-2 py-1.5 font-bold">{r.name}</td>
                 <td className="px-2 py-1.5">{r.position}</td>
                 <td className="px-2 py-1.5 text-muted">{r.team}</td>
@@ -174,7 +211,7 @@ export function ScoringLab({
         </div>
       </form>
 
-      {state.rows && <LabLeaderboard rows={state.rows} scope={state.scope} />}
+      {state.rows && <LabLeaderboard rows={state.rows} scope={state.scope} limit={state.limit} />}
     </div>
   );
 }
