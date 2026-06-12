@@ -50,6 +50,13 @@
       "when": 1781210256964,
       "tag": "0006_majestic_sue_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781223611025,
+      "tag": "0007_overrated_shadowcat",
+      "breakpoints": true
     }
   ]
 }

@@ -120,7 +120,7 @@ export async function runScoringLab(_prev: LabState, formData: FormData): Promis
     string,
     { name: string; position: string; team: string; games: number; points: number; components: Map<string, number> }
   >();
-  const OFFENSE = new Set(["QB", "RB", "WR", "TE"]); // no kickers / defenses
+  const OFFENSE = new Set(["QB", "RB", "WR", "TE", "COACH"]); // no kickers / defenses
   for (const r of rows) {
     if (!OFFENSE.has(r.position)) continue;
     if (position !== "ALL" && r.position !== position) continue;

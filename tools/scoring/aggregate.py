@@ -91,24 +91,16 @@ adv_rec AS (
          SUM(COALESCE(pa.highlight_catch, 0))                       AS hero_catches,
          SUM(CASE WHEN pa.inc_type = 'DP' THEN 1 ELSE 0 END)        AS drops,
          SUM(CASE WHEN pl.target = 1 THEN COALESCE(b.depth_target, 0) ELSE 0 END) AS rec_air_yds,
-         SUM(CASE WHEN pl.reception = 1 THEN COALESCE(b.yac, 0) ELSE 0 END)       AS rec_yac
+         SUM(CASE WHEN pl.reception = 1 THEN COALESCE(b.yac, 0) ELSE 0 END)       AS rec_yac,
+         SUM(CASE WHEN pl.reception = 1 THEN COALESCE(b.yaco, 0) ELSE 0 END)      AS rec_yaco,
+         SUM(CASE WHEN pl.reception = 1 THEN COALESCE(b.mtf, 0) ELSE 0 END)       AS rec_mtf,
+         SUM(CASE WHEN pl.reception = 1 AND pl.first_down = 1 THEN 1 ELSE 0 END)  AS rec_fd,
+         SUM(CASE WHEN pl.reception = 1 AND COALESCE(pl.rec_yards, 0) >= 15 THEN 1 ELSE 0 END) AS rec_explosive
   FROM plays pl
   LEFT JOIN pass pa ON pa.play_id = pl.play_id
   LEFT JOIN base b  ON b.play_id  = pl.play_id
   WHERE pl.receiver_id IS NOT NULL
   GROUP BY pl.receiver_id
-),
-adv_mtf AS (
-  -- Missed tackles forced by the ball carrier (rush + catch-and-run).
-  SELECT gsis_id, SUM(mtf) AS mtf FROM (
-    SELECT pl.runner_id AS gsis_id, COALESCE(b.mtf, 0) AS mtf
-      FROM plays pl JOIN base b ON b.play_id = pl.play_id
-     WHERE pl.runner_id IS NOT NULL
-    UNION ALL
-    SELECT pl.receiver_id, COALESCE(b.mtf, 0)
-      FROM plays pl JOIN base b ON b.play_id = pl.play_id
-     WHERE pl.receiver_id IS NOT NULL AND pl.reception = 1
-  ) x GROUP BY gsis_id
 ),
 -- QB advanced mode: 5+ air-yard splits, sacks taken, EPA over dropbacks.
 adv_qb AS (
@@ -126,9 +118,16 @@ adv_qb AS (
   GROUP BY pl.passer_id
 ),
 -- Per-route separation: every route run (RTE/FRTE roles) across the 5 charted
--- skill slots, graded -2..+4. sep_total sums them; routes counts them.
+-- skill slots, graded -2..+4. sep_total sums them; routes counts them; the
+-- sep_* columns count routes at each grade so grades can score individually.
 adv_routes AS (
-  SELECT pid AS gsis_id, COUNT(*) AS routes, SUM(COALESCE(sep, 0)) AS sep_total
+  SELECT pid AS gsis_id, COUNT(*) AS routes, SUM(COALESCE(sep, 0)) AS sep_total,
+         SUM(CASE WHEN sep = -2 THEN 1 ELSE 0 END) AS sep_m2,
+         SUM(CASE WHEN sep = -1 THEN 1 ELSE 0 END) AS sep_m1,
+         SUM(CASE WHEN sep = 1  THEN 1 ELSE 0 END) AS sep_p1,
+         SUM(CASE WHEN sep = 2  THEN 1 ELSE 0 END) AS sep_p2,
+         SUM(CASE WHEN sep = 3  THEN 1 ELSE 0 END) AS sep_p3,
+         SUM(CASE WHEN sep = 4  THEN 1 ELSE 0 END) AS sep_p4
   FROM (
     SELECT pp.skp1_id AS pid, pp.skp1_sep AS sep, pp.skp1_role AS role, pp.play_id FROM pp
     UNION ALL SELECT pp.skp2_id, pp.skp2_sep, pp.skp2_role, pp.play_id FROM pp
@@ -140,13 +139,15 @@ adv_routes AS (
   WHERE r.pid IS NOT NULL AND r.role IN ('RTE', 'FRTE')
   GROUP BY pid
 ),
--- Rushing detail: stuffs (<= 0 yds, kneels excluded), YBC, YACO.
+-- Rushing detail: stuffs (<= 0 yds, kneels excluded), YBC, YACO, MTF, explosives.
 adv_rush AS (
   SELECT pl.runner_id AS gsis_id,
          SUM(CASE WHEN COALESCE(pl.rushing_yards, 0) <= 0
                    AND COALESCE(b.primary_concept, '') <> 'Kneel' THEN 1 ELSE 0 END) AS rush_stuffs,
          SUM(COALESCE(b.ybc, 0))  AS rush_ybc,
-         SUM(COALESCE(b.yaco, 0)) AS rush_yaco
+         SUM(COALESCE(b.yaco, 0)) AS rush_yaco,
+         SUM(COALESCE(b.mtf, 0))  AS rush_mtf,
+         SUM(CASE WHEN COALESCE(pl.rushing_yards, 0) >= 15 THEN 1 ELSE 0 END) AS rush_explosive
   FROM plays pl
   LEFT JOIN base b ON b.play_id = pl.play_id
   WHERE pl.runner_id IS NOT NULL
@@ -194,7 +195,12 @@ SELECT
   COALESCE(ar.drops,0)           AS drops,
   COALESCE(ar.rec_air_yds,0)     AS rec_air_yds,
   COALESCE(ar.rec_yac,0)         AS rec_yac,
-  COALESCE(am.mtf,0)             AS mtf,
+  COALESCE(ar.rec_yaco,0)        AS rec_yaco,
+  COALESCE(ar.rec_fd,0)          AS rec_fd,
+  COALESCE(arsh.rush_mtf,0) + COALESCE(ar.rec_mtf,0) AS mtf,
+  COALESCE(arsh.rush_mtf,0)      AS rush_mtf,
+  COALESCE(ar.rec_mtf,0)         AS rec_mtf,
+  COALESCE(arsh.rush_explosive,0) + COALESCE(ar.rec_explosive,0) AS explosive_plays,
   COALESCE(aq.pass_yds_5p,0)     AS pass_yds_5p,
   COALESCE(aq.pass_td_5p,0)      AS pass_td_5p,
   COALESCE(aq.pass_fd_5p,0)      AS pass_fd_5p,
@@ -203,6 +209,12 @@ SELECT
   COALESCE(aq.epa_total,0)       AS epa_total,
   COALESCE(rt.routes,0)          AS routes,
   COALESCE(rt.sep_total,0)       AS sep_total,
+  COALESCE(rt.sep_m2,0)          AS sep_m2,
+  COALESCE(rt.sep_m1,0)          AS sep_m1,
+  COALESCE(rt.sep_p1,0)          AS sep_p1,
+  COALESCE(rt.sep_p2,0)          AS sep_p2,
+  COALESCE(rt.sep_p3,0)          AS sep_p3,
+  COALESCE(rt.sep_p4,0)          AS sep_p4,
   COALESCE(arsh.rush_stuffs,0)   AS rush_stuffs,
   COALESCE(arsh.rush_ybc,0)      AS rush_ybc,
   COALESCE(arsh.rush_yaco,0)     AS rush_yaco
@@ -216,7 +228,6 @@ LEFT JOIN rush2     r2  ON r2.gsis_id  = i.gsis_id
 LEFT JOIN rec2      rc2 ON rc2.gsis_id = i.gsis_id
 LEFT JOIN adv_pass  ap  ON ap.gsis_id  = i.gsis_id
 LEFT JOIN adv_rec   ar  ON ar.gsis_id  = i.gsis_id
-LEFT JOIN adv_mtf   am  ON am.gsis_id  = i.gsis_id
 LEFT JOIN adv_qb    aq  ON aq.gsis_id  = i.gsis_id
 LEFT JOIN adv_routes rt ON rt.gsis_id  = i.gsis_id
 LEFT JOIN adv_rush  arsh ON arsh.gsis_id = i.gsis_id
@@ -337,6 +348,68 @@ def build_dst(conn, season: int, week: int, stype: str) -> pd.DataFrame:
     pa_map = dict(zip(pa["team"], pa["points_allowed"])) if not pa.empty else {}
     df["points_allowed"] = df["team"].map(pa_map)
     df["gsis_id"] = "DST-" + df["team"].astype(str)
+    df["season"] = season
+    df["season_type"] = stype
+    df["week"] = week
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Team coaching staff (COACH) — keyed by offensive team. Scheme usage comes
+# from charting (base.pap play-action flag, base.motion pre/at-snap motion);
+# win + points scored are layered on from games_schedule like points_allowed.
+# ---------------------------------------------------------------------------
+
+_COACH_SQL = """
+WITH plays AS (
+  SELECT * FROM pbp
+  WHERE no_play = 0 AND season = %(season)s AND week = %(week)s AND seas_type = %(stype)s
+)
+SELECT
+  pl.offense AS team,
+  SUM(CASE WHEN pl.dropback = 1 AND b.pap = 1 THEN 1 ELSE 0 END) AS pa_dropbacks,
+  -- any charted motion: PS pre-snap / DS during-snap / B both / SH shift
+  -- (TRIM guards a known stray 'B ' value in base.motion)
+  SUM(CASE WHEN pl.dropback = 1
+            AND TRIM(COALESCE(b.motion, '')) IN ('PS','DS','B','SH')
+           THEN 1 ELSE 0 END)                                    AS motion_dropbacks
+FROM plays pl
+LEFT JOIN base b ON b.play_id = pl.play_id
+WHERE pl.offense IS NOT NULL
+GROUP BY pl.offense
+"""
+
+# Each team's own final score and result, from games_schedule.
+_TEAM_RESULT_SQL = """
+SELECT team, points_scored, team_win FROM (
+  SELECT home_team AS team, home_score AS points_scored,
+         CASE WHEN home_score > away_score THEN 1 ELSE 0 END AS team_win
+    FROM games_schedule
+   WHERE season = %(season)s AND week = %(week)s AND game_type = ANY(%(gtypes)s)
+  UNION ALL
+  SELECT away_team AS team, away_score AS points_scored,
+         CASE WHEN away_score > home_score THEN 1 ELSE 0 END AS team_win
+    FROM games_schedule
+   WHERE season = %(season)s AND week = %(week)s AND game_type = ANY(%(gtypes)s)
+) x
+WHERE points_scored IS NOT NULL
+"""
+
+
+def build_coach(conn, season: int, week: int, stype: str) -> pd.DataFrame:
+    df = _query_df(conn, _COACH_SQL, {"season": season, "week": week, "stype": stype})
+    if df.empty:
+        return df
+    res = _query_df(
+        conn,
+        _TEAM_RESULT_SQL,
+        {"season": season, "week": week, "gtypes": _GAME_TYPES.get(stype, ["REG"])},
+    )
+    pts_map = dict(zip(res["team"], res["points_scored"])) if not res.empty else {}
+    win_map = dict(zip(res["team"], res["team_win"])) if not res.empty else {}
+    df["team_points_scored"] = df["team"].map(pts_map)
+    df["team_win"] = df["team"].map(win_map)
+    df["gsis_id"] = "COACH-" + df["team"].astype(str)
     df["season"] = season
     df["season_type"] = stype
     df["week"] = week

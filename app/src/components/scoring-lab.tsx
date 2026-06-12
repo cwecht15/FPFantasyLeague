@@ -124,7 +124,7 @@ export function ScoringLab({
           <label className="flex flex-col gap-1 text-sm">
             Position
             <select name="position" defaultValue="ALL" className={inputClass}>
-              {["ALL", "QB", "RB", "WR", "TE"].map((p) => (
+              {["ALL", "QB", "RB", "WR", "TE", "COACH"].map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>

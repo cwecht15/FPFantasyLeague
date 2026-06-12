@@ -516,7 +516,7 @@ export const standings = pgTable(
 
 /** INBOUND raw stat lines, pushed weekly by the local pipeline. Typed columns
  *  (not JSONB) because the set is stable and queried. One row per player-week;
- *  DST rows use synthetic 'DST-XX' gsis_ids. Mirrors RawStatLine. */
+ *  DST/COACH rows use synthetic 'DST-XX' / 'COACH-XX' gsis_ids. Mirrors RawStatLine. */
 export const playerWeekStats = pgTable(
   "player_week_stats",
   {
@@ -548,7 +548,12 @@ export const playerWeekStats = pgTable(
     drops: integer("drops").notNull().default(0), // inc_type = DP
     recAirYds: integer("rec_air_yds").notNull().default(0), // air yards on targets
     recYac: integer("rec_yac").notNull().default(0), // yards after catch on receptions
+    recYaco: integer("rec_yaco").notNull().default(0), // yards after contact on receptions
+    recFd: integer("rec_fd").notNull().default(0), // receiving first downs
     mtf: integer("mtf").notNull().default(0), // missed tackles forced (rush + rec)
+    rushMtf: integer("rush_mtf").notNull().default(0), // MTF as a rusher
+    recMtf: integer("rec_mtf").notNull().default(0), // MTF on catch-and-run
+    explosivePlays: integer("explosive_plays").notNull().default(0), // 15+ yd rushes + receptions
     // QB advanced-mode inputs (5+ air-yard filter, sacks, EPA per dropback)
     passYds5p: integer("pass_yds_5p").notNull().default(0), // pass yds on 5+ air-yard throws
     passTd5p: integer("pass_td_5p").notNull().default(0),
@@ -559,6 +564,13 @@ export const playerWeekStats = pgTable(
     // route running
     routes: integer("routes").notNull().default(0),
     sepTotal: integer("sep_total").notNull().default(0), // sum of per-route separation (-2..+4)
+    // routes at each separation grade (0/neutral omitted — it scores nothing)
+    sepM2: integer("sep_m2").notNull().default(0), // -2 pressed at line
+    sepM1: integer("sep_m1").notNull().default(0), // -1 tight
+    sepP1: integer("sep_p1").notNull().default(0), // +1 step
+    sepP2: integer("sep_p2").notNull().default(0), // +2 open
+    sepP3: integer("sep_p3").notNull().default(0), // +3 wide open
+    sepP4: integer("sep_p4").notNull().default(0), // +4 coverage bust
     // rushing detail
     rushStuffs: integer("rush_stuffs").notNull().default(0), // carries <= 0 yds (excl. kneels)
     rushYbc: integer("rush_ybc").notNull().default(0), // yards before contact
@@ -579,6 +591,12 @@ export const playerWeekStats = pgTable(
     dstSafeties: integer("dst_safeties"),
     dstBlocks: integer("dst_blocks"),
     pointsAllowed: integer("points_allowed"),
+    // team coaching staff (only set on COACH rows — NULL on player rows so
+    // team-level scoring never leaks onto individuals)
+    paDropbacks: integer("pa_dropbacks"), // play-action dropbacks
+    motionDropbacks: integer("motion_dropbacks"), // dropbacks with pre/at-snap motion
+    teamWin: integer("team_win"), // 1 = won, 0 = lost/tied, NULL = not final
+    teamPointsScored: integer("team_points_scored"), // offense's final score
     // IDP (only set on defender rows)
     idpSoloTackles: integer("idp_solo_tackles"),
     idpAssists: integer("idp_assists"),

@@ -344,7 +344,7 @@ export async function chooseAutopick(
           WHERE season = $2 AND season_type = 'REG'
           GROUP BY gsis_id
        ) s ON s.gsis_id = p.gsis_id
-      WHERE p.position IN ('QB','RB','WR','TE')
+      WHERE p.position IN ('QB','RB','WR','TE','COACH')
         AND NOT EXISTS (
           SELECT 1 FROM roster_entries r
            WHERE r.league_id = $1 AND r.gsis_id = p.gsis_id AND r.dropped_at IS NULL
@@ -433,7 +433,7 @@ export async function listAvailable(
           WHERE season = $2 AND season_type = 'REG'
           GROUP BY gsis_id
        ) s ON s.gsis_id = p.gsis_id
-      WHERE p.position IN ('QB','RB','WR','TE')
+      WHERE p.position IN ('QB','RB','WR','TE','COACH')
         AND NOT EXISTS (
           SELECT 1 FROM roster_entries r
            WHERE r.league_id = $1 AND r.gsis_id = p.gsis_id AND r.dropped_at IS NULL

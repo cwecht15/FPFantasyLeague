@@ -9,8 +9,8 @@ import { getLeagueForUser } from "@/lib/leagues/service";
 import { fmt1 } from "@/lib/format";
 import { AddButton, DropButton } from "@/components/player-row-actions";
 
-// No kickers, no defenses on this platform.
-const POSITIONS = ["ALL", "QB", "RB", "WR", "TE"];
+// No kickers, no defenses on this platform. COACH = team coaching staffs.
+const POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "COACH"];
 const VIEWS = [
   { key: "all", label: "All" },
   { key: "available", label: "Available" },
@@ -33,7 +33,7 @@ export default async function PlayersPage({
 
   const league = ctx.league;
 
-  const conditions = [inArray(players.position, ["QB", "RB", "WR", "TE"])];
+  const conditions = [inArray(players.position, ["QB", "RB", "WR", "TE", "COACH"])];
   if (pos !== "ALL") conditions.push(eq(players.position, pos));
   if (q.trim()) conditions.push(ilike(players.displayName, `%${q.trim()}%`));
 

@@ -61,18 +61,30 @@ export interface IdpRules {
 /** Advanced charting-stat scoring. Per-event (or per-yard for *AirYds/Yac)
  *  point values; 0 disables a component. Sourced from FantasyPoints charting:
  *  accuracy, turnover-worthy throws, hero throws/catches, drops, air yards,
- *  YAC, and missed tackles forced. */
+ *  YAC, and missed tackles forced. Newer fields are optional so rule sets
+ *  saved before they existed still validate — absent means 0. */
 export interface AdvancedRules {
   accurateThrow: number; // per on-target throw (acc in ACC/BOD/AWY)
   turnoverWorthyThrow: number; // typically negative
   heroThrow: number; // charted wow/hero throw
   heroCatch: number; // charted highlight catch
   drop: number; // typically negative
-  missedTackleForced: number;
+  missedTackleForced: number; // combined rush + rec MTF — use the splits below OR this, not both
+  rushMtf?: number; // per MTF as a rusher (splits double-count if combined is also set)
+  recMtf?: number; // per MTF on catch-and-run
   passAirYd: number; // per completed-attempt air yard thrown
   recAirYd: number; // per targeted air yard
   recYacYd: number; // per yard after catch
+  recYacoYd?: number; // per receiving yard after contact
+  recFirstDown?: number; // per receiving first down
+  explosivePlay?: number; // per 15+ yard rush or reception
   sepPoint: number; // per separation point accumulated across routes (-2..+4 each)
+  sepM2?: number; // per route graded -2 (pressed at line) — typically negative
+  sepM1?: number; // per route graded -1 (tight) — typically negative
+  sepP1?: number; // per route graded +1 (step)
+  sepP2?: number; // per route graded +2 (open)
+  sepP3?: number; // per route graded +3 (wide open)
+  sepP4?: number; // per route graded +4 (coverage bust)
   rushStuff: number; // per carry stopped at/behind the LOS — typically negative
   ybcYd: number; // per rushing yard before contact
   yacoYd: number; // per rushing yard after contact
@@ -85,10 +97,21 @@ export const DEFAULT_ADVANCED: AdvancedRules = {
   heroCatch: 0,
   drop: 0,
   missedTackleForced: 0,
+  rushMtf: 0,
+  recMtf: 0,
   passAirYd: 0,
   recAirYd: 0,
   recYacYd: 0,
+  recYacoYd: 0,
+  recFirstDown: 0,
+  explosivePlay: 0,
   sepPoint: 0,
+  sepM2: 0,
+  sepM1: 0,
+  sepP1: 0,
+  sepP2: 0,
+  sepP3: 0,
+  sepP4: 0,
   rushStuff: 0,
   ybcYd: 0,
   yacoYd: 0,
@@ -105,7 +128,10 @@ export interface QbAdvancedRules {
   interception: number; // per INT — typically negative
   rushYd: number; // per QB rushing yard
   rushTd: number; // per QB rushing TD
-  epaPerDropback: number; // points per unit of (EPA total / dropbacks)
+  epaPerDropback: number; // points per unit of (EPA total / dropbacks) — e.g. ×10
+  /** Points per unit of TOTAL weekly EPA (e.g. ×2.5) — the volume-based
+   *  alternative to epaPerDropback. Use one or the other; both apply if set. */
+  epaTotal?: number;
 }
 
 export const FP_QB_ADVANCED: QbAdvancedRules = {
@@ -117,6 +143,24 @@ export const FP_QB_ADVANCED: QbAdvancedRules = {
   rushYd: 0,
   rushTd: 4,
   epaPerDropback: 10,
+  epaTotal: 0,
+};
+
+/** Team coaching staff (COACH roster slot) — scores the synthetic COACH-XX
+ *  rows on scheme usage and team results. Only COACH stat lines carry these
+ *  stats (NULL elsewhere), so the rules never leak onto individual players. */
+export interface CoachingRules {
+  paDropback: number; // per play-action dropback
+  motionDropback: number; // per dropback with pre/at-snap motion
+  win: number; // bonus when the team wins
+  score30Bonus: number; // bonus when the offense scores 30+ points
+}
+
+export const DEFAULT_COACHING: CoachingRules = {
+  paDropback: 0.2,
+  motionDropback: 0.1,
+  win: 5,
+  score30Bonus: 10,
 };
 
 export interface ScoringRules {
@@ -145,6 +189,8 @@ export interface ScoringRules {
   kicking: KickingRules;
   dst: DstRules;
   idp?: IdpRules;
+  /** Optional coaching-staff scoring (COACH roster slot); omitted = 0. */
+  coaching?: CoachingRules;
   /** Optional advanced charting scoring; omitted = all zeros. */
   advanced?: AdvancedRules;
   /** Optional QB advanced mode — replaces standard QB offense scoring. */
@@ -194,6 +240,7 @@ function offenseBase(): Omit<ScoringRules, "reception" | "preset" | "tePremiumRe
     fumbleLost: -1,
     kicking: DEFAULT_KICKING,
     dst: DEFAULT_DST,
+    coaching: { ...DEFAULT_COACHING },
   };
 }
 

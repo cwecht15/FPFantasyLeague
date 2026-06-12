@@ -1,8 +1,9 @@
 """Build the draftable player pool DataFrame for the app `players` table.
 
 Real players come from the current season's weekly_rosters (latest week per
-player for week-accurate team/position). Team defenses are synthesized as
-'DST-<team>' rows so the app can treat every roster slot as "a player".
+player for week-accurate team/position). Team defenses and coaching staffs are
+synthesized as 'DST-<team>' / 'COACH-<team>' rows so the app can treat every
+roster slot as "a player".
 """
 
 from __future__ import annotations
@@ -71,6 +72,18 @@ def build_players(conn, season: int) -> pd.DataFrame:
             "headshot_url": None,
         }
     )
+    coach = pd.DataFrame(
+        {
+            "gsis_id": "COACH-" + teams["team"].astype(str),
+            "display_name": teams["team"].astype(str) + " Coaching Staff",
+            "first_name": None,
+            "last_name": None,
+            "position": "COACH",
+            "nfl_team": teams["team"].astype(str),
+            "status": "ACT",
+            "headshot_url": None,
+        }
+    )
 
     cols = [
         "gsis_id",
@@ -82,4 +95,4 @@ def build_players(conn, season: int) -> pd.DataFrame:
         "status",
         "headshot_url",
     ]
-    return pd.concat([players[cols], dst[cols]], ignore_index=True)
+    return pd.concat([players[cols], dst[cols], coach[cols]], ignore_index=True)

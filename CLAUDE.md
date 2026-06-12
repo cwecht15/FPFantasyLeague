@@ -24,8 +24,11 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    Regular users join by invite code or admin assignment; they cannot create leagues.
 2. **Each user is in exactly one league.** `/leagues` redirects to it (join screen if none;
    admins → `/admin/leagues`). There is no "my leagues" list page.
-3. **No kickers, no defenses.** Offense only: QB/RB/WR/TE + FLEX. The pipeline still pushes
-   K/DST stat lines (future-proofing) but the UI and roster templates exclude them.
+3. **No kickers, no defenses.** Offense only: QB/RB/WR/TE + FLEX, plus the **COACH slot** —
+   each NFL team's coaching staff is a draftable synthetic player (`COACH-XX`, position
+   `COACH`) scored on team scheme/results (play-action dropbacks 0.2, motion dropbacks 0.1,
+   win +5, 30+ points scored +10; see `CoachingRules`). The pipeline still pushes K/DST stat
+   lines (future-proofing) but the UI and roster templates exclude them.
 4. **No live scoring.** Scores exist only after the weekly charting push. Unscored values
    render an em dash `—`, never 0.00 or a spinner. Copy rhythm: *set lineup → slots lock at
    kickoff → results post Tuesday 6:00 AM ET*.
@@ -37,8 +40,10 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    one pool; cumulative starter points weeks 15–17 decide the champion (`/championship`).
 7. **House scoring = `fp_advanced` preset** (default for new 12-team leagues). QBs score in
    an *advanced mode that replaces standard QB scoring*: only 5+ air-yard passing production
-   counts (0.25/yd, 0.5/1D, 4/TD), sacks −1, INT −2, rush TD 4, EPA-per-dropback ×10.
-   RB/WR/TE: PPR + 2 per missed tackle forced.
+   counts (0.25/yd, 0.5/1D, 4/TD), sacks −1, INT −2, rush TD 4, EPA-per-dropback ×10
+   (an EPA-total × option also exists). RB/WR/TE: PPR + 2 per missed tackle forced. The
+   Scoring Lab additionally exposes rush/rec MTF splits, rec YACO, receiving first downs,
+   explosive plays (15+ yd), per-grade separation scoring, and the COACH rules.
 8. **Email/password auth only.** No Google OAuth (owner decision — don't re-suggest it).
 9. Demo leagues (`leagues.is_demo`) are visible to site admins only, everywhere.
 

@@ -120,13 +120,20 @@ export default async function ScoringLabPage({
             ["Drop", "Incompletion charted DP — receiver dropped a catchable ball (charged to the receiver)."],
             ["Air yards (pass / rec)", "Charted throw depth — line of scrimmage to the catch point — summed over the QB's attempts / the receiver's targets."],
             ["YAC", "Yards gained after the catch on each reception."],
-            ["Missed tackles forced", "Charted MTF on each play, credited to the ball carrier — rushes plus catch-and-run."],
+            ["Missed tackles forced", "Charted MTF on each play, credited to the ball carrier — rushes plus catch-and-run. Score the combined value, or rushing and receiving MTF at separate rates (not both)."],
+            ["Rec YACO", "Receiving yards after contact — the after-contact share of YAC on each reception."],
+            ["Receiving first down", "A reception that converted a first down."],
+            ["Explosive play", "A rush or reception of 15 or more yards."],
             ["Separation (per route)", "Every route the player runs is graded −2 (pressed) to +4 (coverage bust); the weekly value is the sum across all routes, not just targets."],
+            ["Separation grades", "The same per-route grades scored individually — e.g. +5 for every +1 (step) route, −10 for every −2 (pressed) route — instead of the linear per-point sum."],
             ["Rushing stuff", "A carry stopped for zero or negative yards (QB kneels excluded)."],
             ["YBC / YACO", "Rushing yards before first contact / after first contact, from charting."],
             ["Pass yds·1D·TD (5+ air)", "Same passing stats, but only on throws charted at 5 or more air yards — everything shorter is excluded in QB advanced mode."],
             ["Sacks taken", "Sacks (including half-sacks) on the QB's dropbacks."],
             ["EPA / dropback", "Expected Points Added summed over every dropback (passes, sacks, scrambles), divided by dropbacks — multiplied by your factor (default ×10)."],
+            ["EPA total", "The same weekly EPA sum, unscaled by volume — multiplied by your factor (e.g. ×2.5). The volume-based alternative to EPA/dropback."],
+            ["PA / motion dropbacks (COACH)", "Team dropbacks off play-action, and team dropbacks with pre-snap or at-snap motion — from charting, credited to the team's coaching staff."],
+            ["Team win / 30+ points (COACH)", "Flat bonuses on the coaching staff when the team wins (ties score zero) and when the offense finishes with 30 or more points."],
           ].map(([term, def]) => (
             <div key={term}>
               <span className="font-bold">{term}</span>

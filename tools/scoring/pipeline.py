@@ -29,9 +29,12 @@ _NOT_NULL_INT = [
     "fumbles_lost",
     # advanced charting (pass/base/pp/epa tables)
     "accurate_throws", "to_worthy_throws", "hero_throws", "pass_air_yds",
-    "hero_catches", "drops", "rec_air_yds", "rec_yac", "mtf",
+    "hero_catches", "drops", "rec_air_yds", "rec_yac", "rec_yaco", "rec_fd",
+    "mtf", "rush_mtf", "rec_mtf", "explosive_plays",
     "pass_yds_5p", "pass_td_5p", "pass_fd_5p", "sacks_taken", "dropbacks",
-    "epa_total", "routes", "sep_total", "rush_stuffs", "rush_ybc", "rush_yaco",
+    "epa_total", "routes", "sep_total",
+    "sep_m2", "sep_m1", "sep_p1", "sep_p2", "sep_p3", "sep_p4",
+    "rush_stuffs", "rush_ybc", "rush_yaco",
     "fg_made_0_19", "fg_made_20_29", "fg_made_30_39", "fg_made_40_49",
     "fg_made_50_plus", "fg_missed", "xp_made",
 ]
@@ -39,6 +42,9 @@ _NOT_NULL_INT = [
 _NULLABLE_STATS = [
     "dst_sacks", "dst_int", "dst_fum_rec", "dst_td", "dst_safeties",
     "dst_blocks", "points_allowed",
+    # coaching staff (COACH rows only — must stay NULL on player rows so
+    # team-level scoring never leaks onto individual players)
+    "pa_dropbacks", "motion_dropbacks", "team_win", "team_points_scored",
 ]
 _KEY = ["gsis_id", "season", "season_type", "week"]
 _STATS_COLS = _KEY + ["team"] + _NOT_NULL_INT + _NULLABLE_STATS + ["source_hash"]
@@ -93,11 +99,13 @@ def _row_hash(row: pd.Series) -> str:
     return hashlib.sha256("|".join(parts).encode()).hexdigest()[:32]
 
 
-def _build_stat_lines(off: pd.DataFrame, kick: pd.DataFrame, dst: pd.DataFrame) -> pd.DataFrame:
-    """Concat offense/kicker/dst (disjoint gsis_ids) into one player_week_stats
-    frame aligned to the app table's columns."""
+def _build_stat_lines(
+    off: pd.DataFrame, kick: pd.DataFrame, dst: pd.DataFrame, coach: pd.DataFrame
+) -> pd.DataFrame:
+    """Concat offense/kicker/dst/coach (disjoint gsis_ids) into one
+    player_week_stats frame aligned to the app table's columns."""
     frames = []
-    for df in (off, kick, dst):
+    for df in (off, kick, dst, coach):
         if df is None or df.empty:
             continue
         d = df.copy()
@@ -144,10 +152,12 @@ def run(
         kicker = aggregate.build_kicker(src, season, week, seas_type)
         log(f"[agg] dst")
         dst = aggregate.build_dst(src, season, week, seas_type)
+        log(f"[agg] coach")
+        coach = aggregate.build_coach(src, season, week, seas_type)
 
-        stats = _build_stat_lines(offense, kicker, dst)
-        log(f"[agg] {len(offense)} offense, {len(kicker)} kicker, {len(dst)} dst "
-            f"-> {len(stats)} stat lines")
+        stats = _build_stat_lines(offense, kicker, dst, coach)
+        log(f"[agg] {len(offense)} offense, {len(kicker)} kicker, {len(dst)} dst, "
+            f"{len(coach)} coach -> {len(stats)} stat lines")
 
         # player_week_games (team -> game_id) for lineup lock
         tg = kickoffs.team_game_map(src, season, week, seas_type)
@@ -175,6 +185,7 @@ def run(
         "offense": len(offense),
         "kicker": len(kicker),
         "dst": len(dst),
+        "coach": len(coach),
         "stat_lines": len(stats),
         "player_week_games": len(pwg),
         "players": 0 if players is None else len(players),

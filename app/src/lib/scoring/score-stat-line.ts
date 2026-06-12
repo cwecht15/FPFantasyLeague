@@ -33,7 +33,12 @@ export interface RawStatLine {
   drops?: number;
   recAirYds?: number;
   recYac?: number;
+  recYaco?: number;
+  recFd?: number;
   mtf?: number;
+  rushMtf?: number;
+  recMtf?: number;
+  explosivePlays?: number;
   passYds5p?: number;
   passTd5p?: number;
   passFd5p?: number;
@@ -42,6 +47,12 @@ export interface RawStatLine {
   epaTotal?: number;
   routes?: number;
   sepTotal?: number;
+  sepM2?: number;
+  sepM1?: number;
+  sepP1?: number;
+  sepP2?: number;
+  sepP3?: number;
+  sepP4?: number;
   rushStuffs?: number;
   rushYbc?: number;
   rushYaco?: number;
@@ -61,6 +72,11 @@ export interface RawStatLine {
   dstSafeties?: number;
   dstBlocks?: number;
   pointsAllowed?: number;
+  // ---- team coaching staff (only set on COACH rows) ----
+  paDropbacks?: number;
+  motionDropbacks?: number;
+  teamWin?: number;
+  teamPointsScored?: number;
   // ---- IDP (individual defender) ----
   idpSoloTackles?: number;
   idpAssists?: number;
@@ -124,6 +140,7 @@ export function scoreStatLine(
     if (n(stats.dropbacks) > 0) {
       add("epaPerDropback", (n(stats.epaTotal) / n(stats.dropbacks)) * q.epaPerDropback);
     }
+    add("epaTotal", n(stats.epaTotal) * n(q.epaTotal));
     add("fumbleLost", n(stats.fumblesLost) * rules.fumbleLost);
     return finish();
   }
@@ -193,13 +210,35 @@ export function scoreStatLine(
     add("heroCatch", n(stats.heroCatches) * a.heroCatch);
     add("drop", n(stats.drops) * a.drop);
     add("missedTackleForced", n(stats.mtf) * a.missedTackleForced);
+    add("rushMtf", n(stats.rushMtf) * n(a.rushMtf));
+    add("recMtf", n(stats.recMtf) * n(a.recMtf));
     add("passAirYds", n(stats.passAirYds) * a.passAirYd);
     add("recAirYds", n(stats.recAirYds) * a.recAirYd);
     add("recYac", n(stats.recYac) * a.recYacYd);
+    add("recYaco", n(stats.recYaco) * n(a.recYacoYd));
+    add("recFirstDown", n(stats.recFd) * n(a.recFirstDown));
+    add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
     add("separation", n(stats.sepTotal) * a.sepPoint);
+    add("sepM2", n(stats.sepM2) * n(a.sepM2));
+    add("sepM1", n(stats.sepM1) * n(a.sepM1));
+    add("sepP1", n(stats.sepP1) * n(a.sepP1));
+    add("sepP2", n(stats.sepP2) * n(a.sepP2));
+    add("sepP3", n(stats.sepP3) * n(a.sepP3));
+    add("sepP4", n(stats.sepP4) * n(a.sepP4));
     add("rushStuff", n(stats.rushStuffs) * a.rushStuff);
     add("rushYbc", n(stats.rushYbc) * a.ybcYd);
     add("rushYaco", n(stats.rushYaco) * a.yacoYd);
+  }
+
+  // ---- team coaching staff (optional; stats only exist on COACH rows) ----
+  if (rules.coaching) {
+    const c = rules.coaching;
+    add("paDropbacks", n(stats.paDropbacks) * c.paDropback);
+    add("motionDropbacks", n(stats.motionDropbacks) * c.motionDropback);
+    add("teamWin", n(stats.teamWin) * c.win);
+    if (stats.teamPointsScored !== undefined && stats.teamPointsScored >= 30) {
+      add("scored30Plus", c.score30Bonus);
+    }
   }
 
   // ---- IDP (optional) ----

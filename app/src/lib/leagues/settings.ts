@@ -20,6 +20,7 @@ export const ROSTER_SLOTS = [
   "TE",
   "FLEX",
   "SUPERFLEX",
+  "COACH",
   "K",
   "DST",
   "DL",
@@ -39,6 +40,7 @@ export const SLOT_ELIGIBILITY: Record<RosterSlot, string[]> = {
   TE: ["TE"],
   FLEX: ["RB", "WR", "TE"],
   SUPERFLEX: ["QB", "RB", "WR", "TE"],
+  COACH: ["COACH"],
   K: ["K"],
   DST: ["DST"],
   DL: ["DL"],
@@ -63,7 +65,8 @@ export const rosterTemplateSchema = z.object({
 });
 export type RosterTemplate = z.infer<typeof rosterTemplateSchema>;
 
-// Platform rule: no kickers, no defenses — offense-only rosters.
+// Platform rule: no kickers, no defenses — offense-only rosters, plus the
+// team coaching-staff slot (scheme usage + team results).
 export const DEFAULT_ROSTER_TEMPLATE: RosterTemplate = {
   slots: [
     { slot: "QB", count: 1 },
@@ -71,13 +74,14 @@ export const DEFAULT_ROSTER_TEMPLATE: RosterTemplate = {
     { slot: "WR", count: 2 },
     { slot: "TE", count: 1 },
     { slot: "FLEX", count: 1 },
+    { slot: "COACH", count: 1 },
     { slot: "BENCH", count: 6 },
     { slot: "IR", count: 1 },
   ],
 };
 
 /** Positions the platform actually rosters (no K, no DST/IDP). */
-export const ACTIVE_POSITIONS = ["QB", "RB", "WR", "TE"] as const;
+export const ACTIVE_POSITIONS = ["QB", "RB", "WR", "TE", "COACH"] as const;
 
 /** Slots offered in the admin settings UI (schema supports more for legacy). */
 export const ACTIVE_SLOTS: RosterSlot[] = [
@@ -87,6 +91,7 @@ export const ACTIVE_SLOTS: RosterSlot[] = [
   "TE",
   "FLEX",
   "SUPERFLEX",
+  "COACH",
   "BENCH",
   "IR",
 ];
@@ -107,8 +112,8 @@ export const draftConfigSchema = z.object({
   secondsPerPick: z.number().int().min(30).max(7 * 24 * 3600).default(8 * 3600),
   orderMode: z.enum(["manual", "random", "reverse_standings"]).default("random"),
   thirdRoundReversal: z.boolean().default(false),
-  // Matches the default roster template size (14 slots incl. bench + IR).
-  rounds: z.number().int().min(1).max(40).default(14),
+  // Matches the default roster template size (15 slots incl. bench + IR).
+  rounds: z.number().int().min(1).max(40).default(15),
 });
 export type DraftConfig = z.infer<typeof draftConfigSchema>;
 
@@ -199,6 +204,14 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       td: z.number(),
     })
     .optional(),
+  coaching: z
+    .object({
+      paDropback: z.number(),
+      motionDropback: z.number(),
+      win: z.number(),
+      score30Bonus: z.number(),
+    })
+    .optional(),
   advanced: z
     .object({
       accurateThrow: z.number(),
@@ -207,10 +220,21 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       heroCatch: z.number(),
       drop: z.number(),
       missedTackleForced: z.number(),
+      rushMtf: z.number().optional(),
+      recMtf: z.number().optional(),
       passAirYd: z.number(),
       recAirYd: z.number(),
       recYacYd: z.number(),
+      recYacoYd: z.number().optional(),
+      recFirstDown: z.number().optional(),
+      explosivePlay: z.number().optional(),
       sepPoint: z.number(),
+      sepM2: z.number().optional(),
+      sepM1: z.number().optional(),
+      sepP1: z.number().optional(),
+      sepP2: z.number().optional(),
+      sepP3: z.number().optional(),
+      sepP4: z.number().optional(),
       rushStuff: z.number(),
       ybcYd: z.number(),
       yacoYd: z.number(),
@@ -226,6 +250,7 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       rushYd: z.number(),
       rushTd: z.number(),
       epaPerDropback: z.number(),
+      epaTotal: z.number().optional(),
     })
     .optional(),
 });

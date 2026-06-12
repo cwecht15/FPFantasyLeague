@@ -13,7 +13,7 @@ import { Countdown, PickButton, PollRefresher, QueueRemove } from "@/components/
 import { DraftBoard, type BoardPlayer } from "@/components/draft-board";
 import { fmt1 } from "@/lib/format";
 
-const POSITIONS = ["ALL", "QB", "RB", "WR", "TE"];
+const POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "COACH"];
 
 export default async function DraftPage({
   params,

@@ -60,3 +60,78 @@ describe("scoreStatLine — DST", () => {
     expect(scoreStatLine({ pointsAllowed: 0 }, ppr).points).toBeCloseTo(10, 2);
   });
 });
+
+describe("scoreStatLine — coaching staff (COACH)", () => {
+  // All presets carry the default coaching rules: 0.2/PA dropback,
+  // 0.1/motion dropback, +5 win, +10 at 30+ points scored.
+  it("scores PA dropbacks, motion dropbacks, win, and the 30-point bonus", () => {
+    const line = { paDropbacks: 12, motionDropbacks: 20, teamWin: 1, teamPointsScored: 31 };
+    // 12*0.2 + 20*0.1 + 5 + 10 = 2.4 + 2 + 15
+    expect(scoreStatLine(line, ppr).points).toBeCloseTo(19.4, 2);
+  });
+
+  it("no win/30+ bonus on a 24-point loss; exactly 30 earns the bonus", () => {
+    const loss = { paDropbacks: 10, motionDropbacks: 10, teamWin: 0, teamPointsScored: 24 };
+    expect(scoreStatLine(loss, ppr).points).toBeCloseTo(10 * 0.2 + 10 * 0.1, 2);
+    const exactly30 = { teamWin: 0, teamPointsScored: 30 };
+    expect(scoreStatLine(exactly30, ppr).points).toBeCloseTo(10, 2);
+  });
+
+  it("missing team result (game not final) scores no result bonuses", () => {
+    const line = { paDropbacks: 5, motionDropbacks: 5 };
+    expect(scoreStatLine(line, ppr).points).toBeCloseTo(5 * 0.2 + 5 * 0.1, 2);
+  });
+});
+
+describe("scoreStatLine — new advanced charting options", () => {
+  const rules = (advanced: Partial<NonNullable<typeof ppr.advanced>>) => ({
+    ...ppr,
+    advanced: { ...SCORING_PRESETS.fp_advanced.advanced!, missedTackleForced: 0, ...advanced },
+  });
+
+  it("RB option B: rush MTF 1.5 / rec MTF 3, rush YACO .1 / rec YACO .2, explosives 6", () => {
+    const line = {
+      rushMtf: 4, recMtf: 2, rushYaco: 30, recYaco: 10, explosivePlays: 2,
+      mtf: 6, // combined stays unscored when split rates are used
+    };
+    const { points } = scoreStatLine(line, rules({
+      rushMtf: 1.5, recMtf: 3, yacoYd: 0.1, recYacoYd: 0.2, explosivePlay: 6,
+    }));
+    // 4*1.5 + 2*3 + 30*0.1 + 10*0.2 + 2*6 = 6 + 6 + 3 + 2 + 12
+    expect(points).toBeCloseTo(29, 2);
+  });
+
+  it("WR separation grades score per route at each grade, plus rec first downs", () => {
+    const line = { sepP1: 4, sepP2: 2, sepM1: 3, sepM2: 1, recFd: 5 };
+    const { points } = scoreStatLine(line, rules({
+      sepP1: 5, sepP2: 10, sepM1: -5, sepM2: -10, recFirstDown: 2,
+    }));
+    // 4*5 + 2*10 + 3*-5 + 1*-10 + 5*2 = 20 + 20 - 15 - 10 + 10
+    expect(points).toBeCloseTo(25, 2);
+  });
+
+  it("TE set: YAC .25, MTF 3, drop -10", () => {
+    const line = { recYac: 40, mtf: 2, drops: 1 };
+    const { points } = scoreStatLine(line, rules({
+      recYacYd: 0.25, missedTackleForced: 3, drop: -10,
+    }));
+    // 40*0.25 + 2*3 - 10 = 10 + 6 - 10
+    expect(points).toBeCloseTo(6, 2);
+  });
+
+  it("QB advanced: EPA total ×2.5 vs EPA/dropback ×10", () => {
+    const base = SCORING_PRESETS.fp_advanced.qbAdvanced!;
+    const line = { epaTotal: 8, dropbacks: 40, passInt: 0 };
+    const opts = { position: "QB" };
+    const viaTotal = scoreStatLine(line, {
+      ...SCORING_PRESETS.fp_advanced,
+      qbAdvanced: { ...base, epaPerDropback: 0, epaTotal: 2.5 },
+    }, opts);
+    expect(viaTotal.points).toBeCloseTo(8 * 2.5, 2); // 20
+    const viaRate = scoreStatLine(line, {
+      ...SCORING_PRESETS.fp_advanced,
+      qbAdvanced: { ...base, epaPerDropback: 10, epaTotal: 0 },
+    }, opts);
+    expect(viaRate.points).toBeCloseTo((8 / 40) * 10, 2); // 2
+  });
+});
