@@ -27,6 +27,7 @@ export function statRowToLine(row: PlayerWeekStatsRow): RawStatLine {
     rec2pt: row.rec2pt,
     fumblesLost: row.fumblesLost,
     accurateThrows: row.accurateThrows,
+    catchableThrows: row.catchableThrows,
     toWorthyThrows: row.toWorthyThrows,
     heroThrows: row.heroThrows,
     passAirYds: row.passAirYds,

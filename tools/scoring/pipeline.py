@@ -28,7 +28,7 @@ _NOT_NULL_INT = [
     "receptions", "rec_yds", "rec_td", "rec_2pt", "targets",
     "fumbles_lost",
     # advanced charting (pass/base/pp/epa tables)
-    "accurate_throws", "to_worthy_throws", "hero_throws", "pass_air_yds",
+    "accurate_throws", "catchable_throws", "to_worthy_throws", "hero_throws", "pass_air_yds",
     "hero_catches", "drops", "rec_air_yds", "rec_yac", "rec_yaco", "rec_fd",
     "mtf", "rush_mtf", "rec_mtf", "explosive_plays",
     "pass_yds_5p", "pass_td_5p", "pass_fd_5p", "sacks_taken", "dropbacks",

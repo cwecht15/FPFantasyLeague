@@ -77,6 +77,7 @@ rec2 AS (
 adv_pass AS (
   SELECT pl.passer_id AS gsis_id,
          SUM(CASE WHEN pa.acc IN ('ACC','BOD','AWY') THEN 1 ELSE 0 END) AS accurate_throws,
+         SUM(COALESCE(pa.catchable, 0))                                 AS catchable_throws,
          SUM(COALESCE(pa.to_worthy, 0))                                 AS to_worthy_throws,
          SUM(COALESCE(pa.wow_throw, 0))                                 AS hero_throws,
          SUM(CASE WHEN pl.attempt = 1 THEN COALESCE(b.depth_target, 0) ELSE 0 END) AS pass_air_yds
@@ -188,6 +189,7 @@ SELECT
   COALESCE(re.targets,0)    AS targets,
   COALESCE(fu.fumbles_lost,0) AS fumbles_lost,
   COALESCE(ap.accurate_throws,0) AS accurate_throws,
+  COALESCE(ap.catchable_throws,0) AS catchable_throws,
   COALESCE(ap.to_worthy_throws,0) AS to_worthy_throws,
   COALESCE(ap.hero_throws,0)     AS hero_throws,
   COALESCE(ap.pass_air_yds,0)    AS pass_air_yds,

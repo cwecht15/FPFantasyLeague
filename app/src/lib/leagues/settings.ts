@@ -216,6 +216,7 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
   advanced: z
     .object({
       accurateThrow: z.number(),
+      catchableThrow: z.number().optional(),
       turnoverWorthyThrow: z.number(),
       heroThrow: z.number(),
       heroCatch: z.number(),

@@ -123,6 +123,12 @@ describe("scoreStatLine — new advanced charting options", () => {
     expect(points).toBeCloseTo(25, 2);
   });
 
+  it("catchable throws score per charted catchable pass", () => {
+    const line = { catchableThrows: 28 };
+    expect(scoreStatLine(line, rules({ catchableThrow: 1 })).points).toBeCloseTo(28, 2);
+    expect(scoreStatLine(line, rules({})).points).toBeCloseTo(0, 2); // default off
+  });
+
   it("TE set: YAC .25, MTF 3, drop -10", () => {
     const line = { recYac: 40, mtf: 2, drops: 1 };
     const { points } = scoreStatLine(line, rules({

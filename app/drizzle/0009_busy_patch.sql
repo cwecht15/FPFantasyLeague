@@ -1,0 +1,1 @@
+ALTER TABLE "player_week_stats" ADD COLUMN "catchable_throws" integer DEFAULT 0 NOT NULL;

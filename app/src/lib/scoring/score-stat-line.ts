@@ -26,6 +26,7 @@ export interface RawStatLine {
   fumblesLost?: number;
   // ---- advanced charting (FantasyPoints data) ----
   accurateThrows?: number;
+  catchableThrows?: number;
   toWorthyThrows?: number;
   heroThrows?: number;
   passAirYds?: number;
@@ -208,6 +209,7 @@ export function scoreStatLine(
   if (rules.advanced) {
     const a = rules.advanced;
     add("accurateThrow", n(stats.accurateThrows) * a.accurateThrow);
+    add("catchableThrow", n(stats.catchableThrows) * n(a.catchableThrow));
     add("turnoverWorthy", n(stats.toWorthyThrows) * a.turnoverWorthyThrow);
     add("heroThrow", n(stats.heroThrows) * a.heroThrow);
     add("heroCatch", n(stats.heroCatches) * a.heroCatch);

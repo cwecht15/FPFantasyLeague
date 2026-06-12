@@ -77,6 +77,7 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
     title: "Advanced charting (per event / per yard; 0 = off)",
     fields: [
       { name: "advAccurateThrow", label: "Accurate throw", default: DEFAULT_ADVANCED.accurateThrow, step: 0.05, hint: "throws charted on-target: accuracy code ACC, BOD (frame), or AWY (away from coverage)" },
+      { name: "advCatchableThrow", label: "Catchable throw", default: DEFAULT_ADVANCED.catchableThrow ?? 0, step: 0.05, hint: "throws charted catchable — looser than accurate (bad-placement-but-catchable counts)" },
       { name: "advTurnoverWorthyThrow", label: "Turnover-worthy throw", default: DEFAULT_ADVANCED.turnoverWorthyThrow, step: 0.05, hint: "charted to_worthy flag — pass that should have been turned over" },
       { name: "advHeroThrow", label: "Hero throw", default: DEFAULT_ADVANCED.heroThrow, step: 0.25, hint: "charted wow/hero-throw flag on the passer" },
       { name: "advHeroCatch", label: "Hero catch", default: DEFAULT_ADVANCED.heroCatch, step: 0.25, hint: "charted highlight/hero-catch flag on the receiver" },
@@ -164,6 +165,7 @@ function ruleValue(rules: ScoringRules, name: string): number | undefined {
     bonusRecYdsThreshold: bonus("rec_yds")?.threshold ?? 100,
     bonusRecYdsPoints: bonus("rec_yds")?.points ?? 0,
     advAccurateThrow: a?.accurateThrow ?? 0,
+    advCatchableThrow: a?.catchableThrow ?? 0,
     advTurnoverWorthyThrow: a?.turnoverWorthyThrow ?? 0,
     advHeroThrow: a?.heroThrow ?? 0,
     advHeroCatch: a?.heroCatch ?? 0,
@@ -276,6 +278,7 @@ export function rulesFromForm(formData: FormData): ScoringRules {
     },
     advanced: {
       accurateThrow: num(formData, "advAccurateThrow", 0),
+      catchableThrow: num(formData, "advCatchableThrow", 0),
       turnoverWorthyThrow: num(formData, "advTurnoverWorthyThrow", 0),
       heroThrow: num(formData, "advHeroThrow", 0),
       heroCatch: num(formData, "advHeroCatch", 0),

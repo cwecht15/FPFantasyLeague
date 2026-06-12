@@ -541,6 +541,7 @@ export const playerWeekStats = pgTable(
     fumblesLost: integer("fumbles_lost").notNull().default(0),
     // advanced charting (FantasyPoints data: pass/base tables)
     accurateThrows: integer("accurate_throws").notNull().default(0), // acc in ACC/BOD/AWY
+    catchableThrows: integer("catchable_throws").notNull().default(0), // charted catchable flag
     toWorthyThrows: integer("to_worthy_throws").notNull().default(0),
     heroThrows: integer("hero_throws").notNull().default(0), // wow_throw
     passAirYds: integer("pass_air_yds").notNull().default(0),

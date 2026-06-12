@@ -65,6 +65,7 @@ export interface IdpRules {
  *  saved before they existed still validate — absent means 0. */
 export interface AdvancedRules {
   accurateThrow: number; // per on-target throw (acc in ACC/BOD/AWY)
+  catchableThrow?: number; // per throw charted catchable
   turnoverWorthyThrow: number; // typically negative
   heroThrow: number; // charted wow/hero throw
   heroCatch: number; // charted highlight catch
@@ -92,6 +93,7 @@ export interface AdvancedRules {
 
 export const DEFAULT_ADVANCED: AdvancedRules = {
   accurateThrow: 0,
+  catchableThrow: 0,
   turnoverWorthyThrow: 0,
   heroThrow: 0,
   heroCatch: 0,

@@ -115,6 +115,7 @@ export default async function ScoringLabPage({
             ["Receptions / targets", "Completions caught and passes thrown the player's way, from play-by-play."],
             ["Fumbles lost", "Fumbles by the player recovered by the defense."],
             ["Accurate throw", "Charting accuracy grade is on-target: ACC (accurate), BOD (within the frame), or AWY (placed away from coverage)."],
+            ["Catchable throw", "Charter deemed the pass catchable — a looser bar than accurate (bad-placement-but-catchable throws count; uncatchable ones don't)."],
             ["Turnover-worthy throw", "Charter flagged the pass as turnover-worthy, whether or not it was intercepted."],
             ["Hero throw / hero catch", "Charter's wow-throw flag on the QB / highlight-catch flag on the receiver."],
             ["Drop", "Incompletion charted DP — receiver dropped a catchable ball (charged to the receiver)."],
