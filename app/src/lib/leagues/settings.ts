@@ -155,16 +155,16 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
   preset: z
     .enum(["ppr", "standard", "half_ppr", "te_premium", "draftkings", "fanduel", "fp_advanced"])
     .optional(),
-  passYdsPerPoint: z.number().positive(),
+  passYdsPerPoint: z.number().nonnegative(), // 0 = passing yards don't score
   passTd: z.number(),
   interception: z.number(),
   pass2pt: z.number(),
-  rushYdsPerPoint: z.number().positive(),
+  rushYdsPerPoint: z.number().nonnegative(),
   rushTd: z.number(),
   rush2pt: z.number(),
   reception: z.number(),
   tePremiumReception: z.number().optional(),
-  recYdsPerPoint: z.number().positive(),
+  recYdsPerPoint: z.number().nonnegative(),
   recTd: z.number(),
   rec2pt: z.number(),
   fumbleLost: z.number(),

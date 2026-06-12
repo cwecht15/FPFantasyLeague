@@ -34,7 +34,7 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
   {
     title: "Passing",
     fields: [
-      { name: "passYdsPerPoint", label: "Yards per point", default: ppr.passYdsPerPoint, hint: "25 = 0.04/yd" },
+      { name: "passYdsPerPoint", label: "Yards per point", default: ppr.passYdsPerPoint, hint: "25 = 0.04/yd; 0 = off" },
       { name: "passTd", label: "Passing TD", default: ppr.passTd },
       { name: "interception", label: "Interception", default: ppr.interception },
       { name: "pass2pt", label: "2-pt pass", default: ppr.pass2pt },
@@ -43,7 +43,7 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
   {
     title: "Rushing",
     fields: [
-      { name: "rushYdsPerPoint", label: "Yards per point", default: ppr.rushYdsPerPoint, hint: "10 = 0.1/yd" },
+      { name: "rushYdsPerPoint", label: "Yards per point", default: ppr.rushYdsPerPoint, hint: "10 = 0.1/yd; 0 = off" },
       { name: "rushTd", label: "Rushing TD", default: ppr.rushTd },
       { name: "rush2pt", label: "2-pt rush", default: ppr.rush2pt },
     ],
@@ -53,7 +53,7 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
     fields: [
       { name: "reception", label: "Reception (PPR)", default: ppr.reception, step: 0.25 },
       { name: "tePremiumReception", label: "TE reception (premium)", default: ppr.reception, step: 0.25, hint: "set above Reception for TE premium" },
-      { name: "recYdsPerPoint", label: "Yards per point", default: ppr.recYdsPerPoint },
+      { name: "recYdsPerPoint", label: "Yards per point", default: ppr.recYdsPerPoint, hint: "10 = 0.1/yd; 0 = off" },
       { name: "recTd", label: "Receiving TD", default: ppr.recTd },
       { name: "rec2pt", label: "2-pt catch", default: ppr.rec2pt },
     ],
@@ -250,16 +250,17 @@ export function rulesFromForm(formData: FormData): ScoringRules {
   const tePrem = num(formData, "tePremiumReception", reception);
 
   return {
-    passYdsPerPoint: Math.max(num(formData, "passYdsPerPoint", 25), 0.0001),
+    // Yards-per-point divisors: clamp negatives to 0; 0 = component off.
+    passYdsPerPoint: Math.max(num(formData, "passYdsPerPoint", 25), 0),
     passTd: num(formData, "passTd", 4),
     interception: num(formData, "interception", -1),
     pass2pt: num(formData, "pass2pt", 2),
-    rushYdsPerPoint: Math.max(num(formData, "rushYdsPerPoint", 10), 0.0001),
+    rushYdsPerPoint: Math.max(num(formData, "rushYdsPerPoint", 10), 0),
     rushTd: num(formData, "rushTd", 6),
     rush2pt: num(formData, "rush2pt", 2),
     reception,
     ...(tePrem !== reception ? { tePremiumReception: tePrem } : {}),
-    recYdsPerPoint: Math.max(num(formData, "recYdsPerPoint", 10), 0.0001),
+    recYdsPerPoint: Math.max(num(formData, "recYdsPerPoint", 10), 0),
     recTd: num(formData, "recTd", 6),
     rec2pt: num(formData, "rec2pt", 2),
     fumbleLost: num(formData, "fumbleLost", -1),

@@ -191,6 +191,21 @@ export function ScoringLab({
               <button type="submit" disabled={pending} className="btn pri self-start">
                 <span>{pending ? "Scoring…" : "Run scoring"}</span>
               </button>
+              <button
+                type="button"
+                className="btn gho self-start"
+                title="Set every scoring value to 0 (yards-per-point at 0 = off) and build up from scratch"
+                onClick={(e) => {
+                  e.currentTarget
+                    .closest("form")
+                    ?.querySelectorAll<HTMLInputElement>('input[type="number"]')
+                    .forEach((input) => {
+                      input.value = "0";
+                    });
+                }}
+              >
+                <span>Zero out all</span>
+              </button>
               <span className="note">Nothing is written — pure what-if on posted stat lines.</span>
               {state.error && <span className="text-sm text-flame">{state.error}</span>}
               <span className="ml-auto flex items-center gap-2">

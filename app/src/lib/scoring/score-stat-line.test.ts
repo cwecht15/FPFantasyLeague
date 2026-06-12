@@ -39,6 +39,12 @@ describe("scoreStatLine — offense", () => {
     const { points } = scoreStatLine({ passYds: 0, passInt: 2, fumblesLost: 1 }, ppr);
     expect(points).toBeCloseTo(-3, 2);
   });
+
+  it("yards-per-point of 0 turns the yardage component off (zeroed-out rules)", () => {
+    const zeroed = { ...ppr, passYdsPerPoint: 0, rushYdsPerPoint: 0, recYdsPerPoint: 0, reception: 0 };
+    const line = { passYds: 300, rushYds: 80, recYds: 90, receptions: 7 };
+    expect(scoreStatLine(line, zeroed).points).toBeCloseTo(0, 2);
+  });
 });
 
 describe("scoreStatLine — kicker", () => {

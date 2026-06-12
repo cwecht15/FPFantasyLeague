@@ -372,7 +372,13 @@ SELECT
   -- (TRIM guards a known stray 'B ' value in base.motion)
   SUM(CASE WHEN pl.dropback = 1
             AND TRIM(COALESCE(b.motion, '')) IN ('PS','DS','B','SH')
-           THEN 1 ELSE 0 END)                                    AS motion_dropbacks
+           THEN 1 ELSE 0 END)                                    AS motion_dropbacks,
+  -- going for it on 4th down: a real pass or run snap (punts/FGs have neither
+  -- a dropback nor a runner, so fakes count as going for it; kneels excluded)
+  SUM(CASE WHEN pl.down = 4
+            AND (pl.dropback = 1 OR pl.runner_id IS NOT NULL)
+            AND COALESCE(b.primary_concept, '') <> 'Kneel'
+           THEN 1 ELSE 0 END)                                    AS fourth_down_attempts
 FROM plays pl
 LEFT JOIN base b ON b.play_id = pl.play_id
 WHERE pl.offense IS NOT NULL

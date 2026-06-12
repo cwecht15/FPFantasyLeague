@@ -44,7 +44,8 @@ _NULLABLE_STATS = [
     "dst_blocks", "points_allowed",
     # coaching staff (COACH rows only — must stay NULL on player rows so
     # team-level scoring never leaks onto individual players)
-    "pa_dropbacks", "motion_dropbacks", "team_win", "team_points_scored",
+    "pa_dropbacks", "motion_dropbacks", "fourth_down_attempts",
+    "team_win", "team_points_scored",
 ]
 _KEY = ["gsis_id", "season", "season_type", "week"]
 _STATS_COLS = _KEY + ["team"] + _NOT_NULL_INT + _NULLABLE_STATS + ["source_hash"]

@@ -147,13 +147,15 @@ export function scoreStatLine(
   }
 
   // ---- passing ----
-  add("passYds", n(stats.passYds) / rules.passYdsPerPoint);
+  // Yards-per-point fields are divisors; 0 (or negative) means the component
+  // is OFF, not infinite — keeps the Lab's "zero out all" semantics sane.
+  if (rules.passYdsPerPoint > 0) add("passYds", n(stats.passYds) / rules.passYdsPerPoint);
   add("passTd", n(stats.passTd) * rules.passTd);
   add("interception", n(stats.passInt) * rules.interception);
   add("pass2pt", n(stats.pass2pt) * rules.pass2pt);
 
   // ---- rushing ----
-  add("rushYds", n(stats.rushYds) / rules.rushYdsPerPoint);
+  if (rules.rushYdsPerPoint > 0) add("rushYds", n(stats.rushYds) / rules.rushYdsPerPoint);
   add("rushTd", n(stats.rushTd) * rules.rushTd);
   add("rush2pt", n(stats.rush2pt) * rules.rush2pt);
 
@@ -163,7 +165,7 @@ export function scoreStatLine(
       ? rules.tePremiumReception
       : rules.reception;
   add("receptions", n(stats.receptions) * recPts);
-  add("recYds", n(stats.recYds) / rules.recYdsPerPoint);
+  if (rules.recYdsPerPoint > 0) add("recYds", n(stats.recYds) / rules.recYdsPerPoint);
   add("recTd", n(stats.recTd) * rules.recTd);
   add("rec2pt", n(stats.rec2pt) * rules.rec2pt);
 
