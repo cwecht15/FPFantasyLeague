@@ -8,7 +8,7 @@
  * so one function scores every roster slot — irrelevant fields contribute 0.
  */
 
-import type { ScoringRules } from "./scoring-systems";
+import { MTF_POSITIONS, PASSING_POSITIONS, SEPARATION_POSITIONS, type ScoringRules } from "./scoring-systems";
 
 export interface RawStatLine {
   // ---- offense ----
@@ -36,10 +36,12 @@ export interface RawStatLine {
   recYac?: number;
   recYaco?: number;
   recFd?: number;
+  firstReadTargets?: number;
   mtf?: number;
   rushMtf?: number;
   recMtf?: number;
   explosivePlays?: number;
+  xfp?: number;
   passYds5p?: number;
   passTd5p?: number;
   passFd5p?: number;
@@ -127,26 +129,6 @@ export function scoreStatLine(
     return { points: Math.round(total * 100) / 100, breakdown: b };
   };
 
-  // ---- QB advanced mode: REPLACES standard QB scoring entirely -------------
-  // Only 5+ air-yard passing production counts; sacks and EPA/dropback score
-  // directly. Fumbles lost still apply at the base rate.
-  if (rules.qbAdvanced && opts.position === "QB") {
-    const q = rules.qbAdvanced;
-    add("deepPassYds", n(stats.passYds5p) * q.deepYd);
-    add("deepFirstDowns", n(stats.passFd5p) * q.deepFirstDown);
-    add("deepPassTd", n(stats.passTd5p) * q.deepTd);
-    add("sacks", n(stats.sacksTaken) * q.sack);
-    add("interception", n(stats.passInt) * q.interception);
-    add("rushYds", n(stats.rushYds) * q.rushYd);
-    add("rushTd", n(stats.rushTd) * q.rushTd);
-    if (n(stats.dropbacks) > 0) {
-      add("epaPerDropback", (n(stats.epaTotal) / n(stats.dropbacks)) * q.epaPerDropback);
-    }
-    add("epaTotal", n(stats.epaTotal) * n(q.epaTotal));
-    add("fumbleLost", n(stats.fumblesLost) * rules.fumbleLost);
-    return finish();
-  }
-
   // ---- passing ----
   // Yards-per-point fields are divisors; 0 (or negative) means the component
   // is OFF, not infinite — keeps the Lab's "zero out all" semantics sane.
@@ -206,33 +188,74 @@ export function scoreStatLine(
   }
 
   // ---- advanced charting (optional) ----
+  // Some advanced stats exist for multiple positions in the data but are
+  // restricted to one slot in the house format: separation → WR only, all
+  // missed-tackles-forced → RB only (see SEPARATION_POSITIONS / MTF_POSITIONS).
   if (rules.advanced) {
     const a = rules.advanced;
+    const pos = opts.position ?? "";
+    const scoresSeparation = SEPARATION_POSITIONS.has(pos);
+    const scoresMtf = MTF_POSITIONS.has(pos);
+    const scoresPassing = PASSING_POSITIONS.has(pos);
+
     add("accurateThrow", n(stats.accurateThrows) * a.accurateThrow);
     add("catchableThrow", n(stats.catchableThrows) * n(a.catchableThrow));
     add("turnoverWorthy", n(stats.toWorthyThrows) * a.turnoverWorthyThrow);
     add("heroThrow", n(stats.heroThrows) * a.heroThrow);
     add("heroCatch", n(stats.heroCatches) * a.heroCatch);
     add("drop", n(stats.drops) * a.drop);
-    add("missedTackleForced", n(stats.mtf) * a.missedTackleForced);
-    add("rushMtf", n(stats.rushMtf) * n(a.rushMtf));
-    add("recMtf", n(stats.recMtf) * n(a.recMtf));
+    if (scoresMtf) {
+      add("missedTackleForced", n(stats.mtf) * a.missedTackleForced);
+      add("rushMtf", n(stats.rushMtf) * n(a.rushMtf));
+      add("recMtf", n(stats.recMtf) * n(a.recMtf));
+    }
     add("passAirYds", n(stats.passAirYds) * a.passAirYd);
     add("recAirYds", n(stats.recAirYds) * a.recAirYd);
     add("recYac", n(stats.recYac) * a.recYacYd);
     add("recYaco", n(stats.recYaco) * n(a.recYacoYd));
     add("recFirstDown", n(stats.recFd) * n(a.recFirstDown));
+    add("recFirstRead", n(stats.firstReadTargets) * n(a.recFirstRead));
     add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
-    add("separation", n(stats.sepTotal) * a.sepPoint);
-    add("sepM2", n(stats.sepM2) * n(a.sepM2));
-    add("sepM1", n(stats.sepM1) * n(a.sepM1));
-    add("sepP1", n(stats.sepP1) * n(a.sepP1));
-    add("sepP2", n(stats.sepP2) * n(a.sepP2));
-    add("sepP3", n(stats.sepP3) * n(a.sepP3));
-    add("sepP4", n(stats.sepP4) * n(a.sepP4));
+    if (scoresSeparation) {
+      add("separation", n(stats.sepTotal) * a.sepPoint);
+      add("sepM2", n(stats.sepM2) * n(a.sepM2));
+      add("sepM1", n(stats.sepM1) * n(a.sepM1));
+      add("sepP1", n(stats.sepP1) * n(a.sepP1));
+      add("sepP2", n(stats.sepP2) * n(a.sepP2));
+      add("sepP3", n(stats.sepP3) * n(a.sepP3));
+      add("sepP4", n(stats.sepP4) * n(a.sepP4));
+    }
     add("rushStuff", n(stats.rushStuffs) * a.rushStuff);
     add("rushYbc", n(stats.rushYbc) * a.ybcYd);
     add("rushYaco", n(stats.rushYaco) * a.yacoYd);
+
+    // ---- passing production from charting/EPA (QB only — see PASSING_POSITIONS;
+    //      keeps gadget-play dropbacks off skill players) ----
+    if (scoresPassing) {
+      add("deepPassYds", n(stats.passYds5p) * n(a.deepPassYd));
+      add("deepPassFirstDown", n(stats.passFd5p) * n(a.deepPassFirstDown));
+      add("deepPassTd", n(stats.passTd5p) * n(a.deepPassTd));
+      add("sackTaken", n(stats.sacksTaken) * n(a.sackTaken));
+      if (n(stats.dropbacks) > 0) {
+        add("epaPerDropback", (n(stats.epaTotal) / n(stats.dropbacks)) * n(a.epaPerDropback));
+      }
+      add("epaTotal", n(stats.epaTotal) * n(a.epaTotal));
+    }
+  }
+
+  // ---- expected fantasy points (optional; per-position xFP multiplier) ----
+  if (rules.xfp) {
+    const mult =
+      opts.position === "QB"
+        ? rules.xfp.qb
+        : opts.position === "RB"
+          ? rules.xfp.rb
+          : opts.position === "WR"
+            ? rules.xfp.wr
+            : opts.position === "TE"
+              ? rules.xfp.te
+              : 0;
+    add("xfp", n(stats.xfp) * mult);
   }
 
   // ---- team coaching staff (optional; stats only exist on COACH rows) ----

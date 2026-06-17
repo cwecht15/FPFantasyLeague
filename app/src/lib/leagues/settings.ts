@@ -240,19 +240,21 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       rushStuff: z.number(),
       ybcYd: z.number(),
       yacoYd: z.number(),
+      recFirstRead: z.number().optional(),
+      deepPassYd: z.number().optional(),
+      deepPassFirstDown: z.number().optional(),
+      deepPassTd: z.number().optional(),
+      sackTaken: z.number().optional(),
+      epaPerDropback: z.number().optional(),
+      epaTotal: z.number().optional(),
     })
     .optional(),
-  qbAdvanced: z
+  xfp: z
     .object({
-      deepYd: z.number(),
-      deepFirstDown: z.number(),
-      deepTd: z.number(),
-      sack: z.number(),
-      interception: z.number(),
-      rushYd: z.number(),
-      rushTd: z.number(),
-      epaPerDropback: z.number(),
-      epaTotal: z.number().optional(),
+      qb: z.number(),
+      rb: z.number(),
+      wr: z.number(),
+      te: z.number(),
     })
     .optional(),
 });

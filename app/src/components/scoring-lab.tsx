@@ -117,14 +117,10 @@ const inputClass =
 export function ScoringLab({
   seasons,
   fieldGroups,
-  qbGroup,
-  qbEnabled = true,
   initialSetName = "",
 }: {
   seasons: number[];
   fieldGroups: LabFieldGroup[];
-  qbGroup: LabFieldGroup;
-  qbEnabled?: boolean;
   initialSetName?: string;
 }) {
   const [state, formAction, pending] = useActionState(runScoringLab, initialState);
@@ -186,7 +182,7 @@ export function ScoringLab({
             <span className="t">Rules</span>
           </div>
           <div className="flex flex-col gap-5 px-[22px] py-4">
-            <RuleFieldsets groups={fieldGroups} qbGroup={qbGroup} qbEnabled={qbEnabled} />
+            <RuleFieldsets groups={fieldGroups} />
             <div className="flex flex-wrap items-center gap-3">
               <button type="submit" disabled={pending} className="btn pri self-start">
                 <span>{pending ? "Scoring…" : "Run scoring"}</span>

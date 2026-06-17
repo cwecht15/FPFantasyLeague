@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { playerWeekStats, scoringSets } from "@/lib/db/schema";
 import { ScoringLab } from "@/components/scoring-lab";
 import { deleteScoringSet } from "@/lib/scoring/lab-actions";
-import { groupsFromRules, LAB_FIELD_GROUPS, QB_FIELD_GROUP } from "@/lib/scoring/lab-form";
+import { groupsFromRules, LAB_FIELD_GROUPS } from "@/lib/scoring/lab-form";
 
 export const metadata = { title: "Scoring Lab — FP Fantasy League" };
 
@@ -30,9 +30,7 @@ export default async function ScoringLabPage({
   const sets = await db.select().from(scoringSets).orderBy(desc(scoringSets.updatedAt));
   const selected = setParam ? (sets.find((s) => s.id === Number(setParam)) ?? null) : null;
 
-  const prefill = selected
-    ? groupsFromRules(selected.rules)
-    : { groups: LAB_FIELD_GROUPS, qbGroup: QB_FIELD_GROUP, qbEnabled: true };
+  const prefill = selected ? groupsFromRules(selected.rules) : { groups: LAB_FIELD_GROUPS };
 
   return (
     <div>
@@ -66,8 +64,8 @@ export default async function ScoringLabPage({
               >
                 <span>
                   <b>{s.name}</b>
-                  {s.rules.qbAdvanced && (
-                    <span className="ml-2 text-[11px] text-faint">QB advanced</span>
+                  {s.rules.xfp && Object.values(s.rules.xfp).some((v) => v !== 0) && (
+                    <span className="ml-2 text-[11px] text-faint">xFP</span>
                   )}
                   <span className="ml-3 text-[11.5px] text-faint">
                     saved {s.updatedAt.toLocaleString()}
@@ -98,8 +96,6 @@ export default async function ScoringLabPage({
             key={selected?.id ?? "default"}
             seasons={seasons}
             fieldGroups={prefill.groups}
-            qbGroup={prefill.qbGroup}
-            qbEnabled={prefill.qbEnabled}
             initialSetName={selected?.name ?? ""}
           />
         )}
@@ -121,15 +117,17 @@ export default async function ScoringLabPage({
             ["Drop", "Incompletion charted DP — receiver dropped a catchable ball (charged to the receiver)."],
             ["Air yards (pass / rec)", "Charted throw depth — line of scrimmage to the catch point — summed over the QB's attempts / the receiver's targets."],
             ["YAC", "Yards gained after the catch on each reception."],
-            ["Missed tackles forced", "Charted MTF on each play, credited to the ball carrier — rushes plus catch-and-run. Score the combined value, or rushing and receiving MTF at separate rates (not both)."],
+            ["Missed tackles forced", "Charted MTF on each play, credited to the ball carrier — rushes plus catch-and-run. Scores RBs only. Score the combined value, or rushing and receiving MTF at separate rates (not both)."],
             ["Rec YACO", "Receiving yards after contact — the after-contact share of YAC on each reception."],
             ["Receiving first down", "A reception that converted a first down."],
+            ["First-read target", "A target where the charted progression read was the QB's first — i.e. the receiver was the primary read on the play. Credited to the targeted receiver."],
             ["Explosive play", "A rush or reception of 15 or more yards."],
-            ["Separation (per route)", "Every route the player runs is graded −2 (pressed) to +4 (coverage bust); the weekly value is the sum across all routes, not just targets."],
+            ["Expected fantasy points (xFP)", "PPR-style expected production from charted opportunities (expected catches, receiving/rushing yards, and TDs), summed per player-week — scored by a per-position multiplier (e.g. TE × 1.25)."],
+            ["Separation (per route)", "Every route the player runs is graded −2 (pressed) to +4 (coverage bust); the weekly value is the sum across all routes, not just targets. Scores WRs only."],
             ["Separation grades", "The same per-route grades scored individually — e.g. +5 for every +1 (step) route, −10 for every −2 (pressed) route — instead of the linear per-point sum."],
             ["Rushing stuff", "A carry stopped for zero or negative yards (QB kneels excluded)."],
             ["YBC / YACO", "Rushing yards before first contact / after first contact, from charting."],
-            ["Pass yds·1D·TD (5+ air)", "Same passing stats, but only on throws charted at 5 or more air yards — everything shorter is excluded in QB advanced mode."],
+            ["Pass yds·1D·TD (5+ air)", "Same passing stats, but only on throws charted at 5 or more air yards — everything shorter is excluded. Add these on top of (or instead of) the basic passing values."],
             ["Sacks taken", "Sacks (including half-sacks) on the QB's dropbacks."],
             ["EPA / dropback", "Expected Points Added summed over every dropback (passes, sacks, scrambles), divided by dropbacks — multiplied by your factor (default ×10)."],
             ["EPA total", "The same weekly EPA sum, unscaled by volume — multiplied by your factor (e.g. ×2.5). The volume-based alternative to EPA/dropback."],

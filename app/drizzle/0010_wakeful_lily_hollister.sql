@@ -1,0 +1,2 @@
+ALTER TABLE "player_week_stats" ADD COLUMN "first_read_targets" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "player_week_stats" ADD COLUMN "xfp" double precision DEFAULT 0 NOT NULL;

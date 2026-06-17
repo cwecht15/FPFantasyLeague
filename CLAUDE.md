@@ -38,12 +38,17 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    `app/src/lib/nfl/locks.ts` and `_stats_locked` in `tools/scoring/pipeline.py`.
 6. **Playoffs = cross-league championship sprint.** No brackets. Top 2 from every league enter
    one pool; cumulative starter points weeks 15–17 decide the champion (`/championship`).
-7. **House scoring = `fp_advanced` preset** (default for new 12-team leagues). QBs score in
-   an *advanced mode that replaces standard QB scoring*: only 5+ air-yard passing production
-   counts (0.25/yd, 0.5/1D, 4/TD), sacks −1, INT −2, rush TD 4, EPA-per-dropback ×10
-   (an EPA-total × option also exists). RB/WR/TE: PPR + 2 per missed tackle forced. The
-   Scoring Lab additionally exposes rush/rec MTF splits, rec YACO, receiving first downs,
-   explosive plays (15+ yd), per-grade separation scoring, and the COACH rules.
+7. **House scoring = `fp_advanced` preset** (default for new 12-team leagues). One unified,
+   additive rule set scores every slot (there is **no** separate "QB advanced mode" — that
+   was removed). QBs: basic passing-yards/TD turned off, scored instead on 5+ air-yard
+   passing production (0.25/yd, 0.5/1D, 4/TD), sacks −1, INT −2, EPA-per-dropback ×10 (an
+   EPA-total × option also exists) — these passing/EPA components score **QB only**; QB
+   rushing scores at the standard rate. RB/WR/TE: PPR. **Missed tackles forced score RBs
+   only (+2)**; **per-route separation scores WRs only**. The Scoring Lab also exposes rush/rec
+   MTF splits, rec YACO, receiving first downs, **first-read targets**, explosive plays
+   (15+ yd), per-grade separation, **expected fantasy points (xFP) as a per-position
+   multiplier** (e.g. TE ×1.25), and the COACH rules. Position scoping lives in
+   `score-stat-line.ts` (`SEPARATION_POSITIONS` / `MTF_POSITIONS` / `PASSING_POSITIONS`).
 8. **Email/password auth only.** No Google OAuth (owner decision — don't re-suggest it).
 9. Demo leagues (`leagues.is_demo`) are visible to site admins only, everywhere.
 

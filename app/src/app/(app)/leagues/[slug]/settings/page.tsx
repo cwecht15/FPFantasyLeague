@@ -28,19 +28,19 @@ function ruleRows(r: ScoringRules): [string, string][] {
     ["Receiving TD", String(r.recTd)],
     ["Fumble lost", String(r.fumbleLost)],
   ];
-  if (r.advanced?.missedTackleForced) {
-    rows.push(["Missed tackle forced", String(r.advanced.missedTackleForced)]);
-  }
-  if (r.qbAdvanced) {
-    rows.push(
-      ["QB: pass yds (5+ air)", `${r.qbAdvanced.deepYd} / yd`],
-      ["QB: passing 1st down (5+ air)", String(r.qbAdvanced.deepFirstDown)],
-      ["QB: passing TD (5+ air)", String(r.qbAdvanced.deepTd)],
-      ["QB: sack taken", String(r.qbAdvanced.sack)],
-      ["QB: interception", String(r.qbAdvanced.interception)],
-      ["QB: rushing TD", String(r.qbAdvanced.rushTd)],
-      ["QB: EPA / dropback ×", String(r.qbAdvanced.epaPerDropback)],
-    );
+  const a = r.advanced;
+  if (a?.missedTackleForced) rows.push(["Missed tackle forced (RB)", String(a.missedTackleForced)]);
+  if (a?.deepPassYd) rows.push(["Pass yds 5+ air", `${a.deepPassYd} / yd`]);
+  if (a?.deepPassFirstDown) rows.push(["Passing 1st down (5+ air)", String(a.deepPassFirstDown)]);
+  if (a?.deepPassTd) rows.push(["Passing TD (5+ air)", String(a.deepPassTd)]);
+  if (a?.sackTaken) rows.push(["Sack taken", String(a.sackTaken)]);
+  if (a?.epaPerDropback) rows.push(["EPA / dropback ×", String(a.epaPerDropback)]);
+  if (a?.epaTotal) rows.push(["EPA total ×", String(a.epaTotal)]);
+  if (a?.recFirstRead) rows.push(["First-read target", String(a.recFirstRead)]);
+  if (r.xfp) {
+    for (const [label, key] of [["QB", "qb"], ["RB", "rb"], ["WR", "wr"], ["TE", "te"]] as const) {
+      if (r.xfp[key]) rows.push([`xFP × ${label}`, String(r.xfp[key])]);
+    }
   }
   return rows;
 }
@@ -231,8 +231,8 @@ export default async function SettingsPage({
             >
               <input type="hidden" name="slug" value={slug} />
               {(() => {
-                const { groups, qbGroup, qbEnabled } = groupsFromRules(settings.scoringRules);
-                return <RuleFieldsets groups={groups} qbGroup={qbGroup} qbEnabled={qbEnabled} />;
+                const { groups } = groupsFromRules(settings.scoringRules);
+                return <RuleFieldsets groups={groups} />;
               })()}
             </ActionForm>
           </div>

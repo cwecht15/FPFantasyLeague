@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scoreStatLine } from "./score-stat-line";
-import { SCORING_PRESETS } from "./scoring-systems";
+import { DEFAULT_ADVANCED, SCORING_PRESETS } from "./scoring-systems";
 
 const ppr = SCORING_PRESETS.ppr;
 const standard = SCORING_PRESETS.standard;
@@ -96,20 +96,20 @@ describe("scoreStatLine — coaching staff (COACH)", () => {
   });
 });
 
-describe("scoreStatLine — new advanced charting options", () => {
+describe("scoreStatLine — advanced charting + position scoping", () => {
   const rules = (advanced: Partial<NonNullable<typeof ppr.advanced>>) => ({
     ...ppr,
-    advanced: { ...SCORING_PRESETS.fp_advanced.advanced!, missedTackleForced: 0, ...advanced },
+    advanced: { ...DEFAULT_ADVANCED, ...advanced },
   });
 
-  it("RB option B: rush MTF 1.5 / rec MTF 3, rush YACO .1 / rec YACO .2, explosives 6", () => {
+  it("RB: rush MTF 1.5 / rec MTF 3, rush YACO .1 / rec YACO .2, explosives 6", () => {
     const line = {
       rushMtf: 4, recMtf: 2, rushYaco: 30, recYaco: 10, explosivePlays: 2,
       mtf: 6, // combined stays unscored when split rates are used
     };
     const { points } = scoreStatLine(line, rules({
       rushMtf: 1.5, recMtf: 3, yacoYd: 0.1, recYacoYd: 0.2, explosivePlay: 6,
-    }));
+    }), { position: "RB" });
     // 4*1.5 + 2*3 + 30*0.1 + 10*0.2 + 2*6 = 6 + 6 + 3 + 2 + 12
     expect(points).toBeCloseTo(29, 2);
   });
@@ -118,9 +118,24 @@ describe("scoreStatLine — new advanced charting options", () => {
     const line = { sepP1: 4, sepP2: 2, sepM1: 3, sepM2: 1, recFd: 5 };
     const { points } = scoreStatLine(line, rules({
       sepP1: 5, sepP2: 10, sepM1: -5, sepM2: -10, recFirstDown: 2,
-    }));
+    }), { position: "WR" });
     // 4*5 + 2*10 + 3*-5 + 1*-10 + 5*2 = 20 + 20 - 15 - 10 + 10
     expect(points).toBeCloseTo(25, 2);
+  });
+
+  it("MTF scores for RBs only — a WR/TE with catch-and-run MTF gets nothing", () => {
+    const line = { mtf: 5, rushMtf: 2, recMtf: 3 };
+    const r = rules({ missedTackleForced: 2, rushMtf: 1, recMtf: 1 });
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(5 * 2 + 2 + 3, 2);
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(0, 2);
+    expect(scoreStatLine(line, r, { position: "TE" }).points).toBeCloseTo(0, 2);
+  });
+
+  it("separation scores for WRs only — an RB running routes gets nothing", () => {
+    const line = { sepTotal: 20, sepP2: 5 };
+    const r = rules({ sepPoint: 0.5, sepP2: 2 });
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(20 * 0.5 + 5 * 2, 2);
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(0, 2);
   });
 
   it("catchable throws score per charted catchable pass", () => {
@@ -129,28 +144,35 @@ describe("scoreStatLine — new advanced charting options", () => {
     expect(scoreStatLine(line, rules({})).points).toBeCloseTo(0, 2); // default off
   });
 
-  it("TE set: YAC .25, MTF 3, drop -10", () => {
-    const line = { recYac: 40, mtf: 2, drops: 1 };
-    const { points } = scoreStatLine(line, rules({
-      recYacYd: 0.25, missedTackleForced: 3, drop: -10,
-    }));
-    // 40*0.25 + 2*3 - 10 = 10 + 6 - 10
-    expect(points).toBeCloseTo(6, 2);
+  it("first-read targets score per target, credited to the receiver", () => {
+    const line = { firstReadTargets: 7 };
+    expect(scoreStatLine(line, rules({ recFirstRead: 0.5 }), { position: "WR" }).points).toBeCloseTo(3.5, 2);
   });
 
-  it("QB advanced: EPA total ×2.5 vs EPA/dropback ×10", () => {
-    const base = SCORING_PRESETS.fp_advanced.qbAdvanced!;
-    const line = { epaTotal: 8, dropbacks: 40, passInt: 0 };
-    const opts = { position: "QB" };
-    const viaTotal = scoreStatLine(line, {
-      ...SCORING_PRESETS.fp_advanced,
-      qbAdvanced: { ...base, epaPerDropback: 0, epaTotal: 2.5 },
-    }, opts);
+  it("deep passing (5+ air) + sacks score additively for a QB", () => {
+    const line = { passYds5p: 300, passFd5p: 12, passTd5p: 2, sacksTaken: 3 };
+    const { points } = scoreStatLine(line, rules({
+      deepPassYd: 0.25, deepPassFirstDown: 0.5, deepPassTd: 4, sackTaken: -1,
+    }), { position: "QB" });
+    // 300*0.25 + 12*0.5 + 2*4 + 3*-1 = 75 + 6 + 8 - 3
+    expect(points).toBeCloseTo(86, 2);
+  });
+
+  it("EPA total ×2.5 vs EPA/dropback ×10", () => {
+    const line = { epaTotal: 8, dropbacks: 40 };
+    const viaTotal = scoreStatLine(line, rules({ epaTotal: 2.5, epaPerDropback: 0 }), { position: "QB" });
     expect(viaTotal.points).toBeCloseTo(8 * 2.5, 2); // 20
-    const viaRate = scoreStatLine(line, {
-      ...SCORING_PRESETS.fp_advanced,
-      qbAdvanced: { ...base, epaPerDropback: 10, epaTotal: 0 },
-    }, opts);
+    const viaRate = scoreStatLine(line, rules({ epaPerDropback: 10, epaTotal: 0 }), { position: "QB" });
     expect(viaRate.points).toBeCloseTo((8 / 40) * 10, 2); // 2
+  });
+});
+
+describe("scoreStatLine — expected fantasy points (xFP)", () => {
+  it("multiplies stored xFP by the per-position factor (TE × 1.25)", () => {
+    const line = { xfp: 12 };
+    const r = { ...ppr, xfp: { qb: 0, rb: 1, wr: 1, te: 1.25 } };
+    expect(scoreStatLine(line, r, { position: "TE" }).points).toBeCloseTo(15, 2);
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(12, 2);
+    expect(scoreStatLine(line, r, { position: "QB" }).points).toBeCloseTo(0, 2); // off for QB
   });
 });

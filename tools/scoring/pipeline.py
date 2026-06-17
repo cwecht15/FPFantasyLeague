@@ -29,7 +29,7 @@ _NOT_NULL_INT = [
     "fumbles_lost",
     # advanced charting (pass/base/pp/epa tables)
     "accurate_throws", "catchable_throws", "to_worthy_throws", "hero_throws", "pass_air_yds",
-    "hero_catches", "drops", "rec_air_yds", "rec_yac", "rec_yaco", "rec_fd",
+    "hero_catches", "drops", "rec_air_yds", "rec_yac", "rec_yaco", "rec_fd", "first_read_targets",
     "mtf", "rush_mtf", "rec_mtf", "explosive_plays",
     "pass_yds_5p", "pass_td_5p", "pass_fd_5p", "sacks_taken", "dropbacks",
     "epa_total", "routes", "sep_total",
@@ -38,6 +38,9 @@ _NOT_NULL_INT = [
     "fg_made_0_19", "fg_made_20_29", "fg_made_30_39", "fg_made_40_49",
     "fg_made_50_plus", "fg_missed", "xp_made",
 ]
+# NOT NULL DEFAULT 0 floating-point stat columns (kept distinct from the int
+# list so fractional values like xFP aren't coerced to integers).
+_NOT_NULL_FLOAT = ["xfp"]
 # Nullable stat columns (left NULL when not applicable to a row's kind).
 _NULLABLE_STATS = [
     "dst_sacks", "dst_int", "dst_fum_rec", "dst_td", "dst_safeties",
@@ -48,8 +51,8 @@ _NULLABLE_STATS = [
     "team_win", "team_points_scored",
 ]
 _KEY = ["gsis_id", "season", "season_type", "week"]
-_STATS_COLS = _KEY + ["team"] + _NOT_NULL_INT + _NULLABLE_STATS + ["source_hash"]
-_HASH_COLS = _NOT_NULL_INT + _NULLABLE_STATS + ["team"]
+_STATS_COLS = _KEY + ["team"] + _NOT_NULL_INT + _NOT_NULL_FLOAT + _NULLABLE_STATS + ["source_hash"]
+_HASH_COLS = _NOT_NULL_INT + _NOT_NULL_FLOAT + _NULLABLE_STATS + ["team"]
 
 
 _ET = ZoneInfo("America/New_York")
@@ -116,13 +119,13 @@ def _build_stat_lines(
     if not frames:
         return pd.DataFrame(columns=_STATS_COLS)
     out = pd.concat(frames, ignore_index=True)
-    for c in _NOT_NULL_INT:
+    for c in _NOT_NULL_INT + _NOT_NULL_FLOAT:
         out[c] = out[c].fillna(0)
     # A player can legitimately appear in two frames (e.g. a kicker who threw a
     # pass on a fake FG -> offense + kicker rows). Merge them into one stat line:
     # counting stats sum (disjoint nonzero), team/nullables take first non-null.
     if out.duplicated(subset=_KEY).any():
-        agg = {c: "sum" for c in _NOT_NULL_INT}
+        agg = {c: "sum" for c in _NOT_NULL_INT + _NOT_NULL_FLOAT}
         agg.update({c: "first" for c in _NULLABLE_STATS})
         agg["team"] = "first"
         out = out.groupby(_KEY, as_index=False, dropna=False).agg(agg)

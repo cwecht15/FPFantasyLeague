@@ -10,7 +10,7 @@ import {
   DEFAULT_COACHING,
   DEFAULT_DST,
   DEFAULT_KICKING,
-  FP_QB_ADVANCED,
+  DEFAULT_XFP,
   SCORING_PRESETS,
   type ScoringRules,
 } from "@/lib/scoring/scoring-systems";
@@ -38,6 +38,17 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
       { name: "passTd", label: "Passing TD", default: ppr.passTd },
       { name: "interception", label: "Interception", default: ppr.interception },
       { name: "pass2pt", label: "2-pt pass", default: ppr.pass2pt },
+    ],
+  },
+  {
+    title: "Passing — advanced (5+ air-yard splits, sacks, EPA; 0 = off). Scores any passer alongside the basic passing values above.",
+    fields: [
+      { name: "advDeepPassYd", label: "Pass yds 5+ air (per yd)", default: DEFAULT_ADVANCED.deepPassYd ?? 0, step: 0.01, hint: "passing yards on throws charted at 5+ air yards only" },
+      { name: "advDeepPassFirstDown", label: "Passing 1st down (5+ air)", default: DEFAULT_ADVANCED.deepPassFirstDown ?? 0, step: 0.25, hint: "completions of 5+ air yards that converted a first down" },
+      { name: "advDeepPassTd", label: "Passing TD (5+ air)", default: DEFAULT_ADVANCED.deepPassTd ?? 0, step: 0.5, hint: "passing TDs on throws of 5+ air yards" },
+      { name: "advSackTaken", label: "Sack taken", default: DEFAULT_ADVANCED.sackTaken ?? 0, step: 0.25, hint: "sacks (incl. half-sacks) charged to the passer — set negative" },
+      { name: "advEpaPerDropback", label: "EPA/dropback ×", default: DEFAULT_ADVANCED.epaPerDropback ?? 0, step: 1, hint: "weekly EPA summed over dropbacks, divided by dropbacks, times this multiplier (efficiency option — e.g. ×10)" },
+      { name: "advEpaTotal", label: "EPA total ×", default: DEFAULT_ADVANCED.epaTotal ?? 0, step: 0.5, hint: "weekly EPA summed over dropbacks, times this multiplier (volume option — e.g. ×2.5; zero out EPA/dropback when using this)" },
     ],
   },
   {
@@ -82,16 +93,17 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
       { name: "advHeroThrow", label: "Hero throw", default: DEFAULT_ADVANCED.heroThrow, step: 0.25, hint: "charted wow/hero-throw flag on the passer" },
       { name: "advHeroCatch", label: "Hero catch", default: DEFAULT_ADVANCED.heroCatch, step: 0.25, hint: "charted highlight/hero-catch flag on the receiver" },
       { name: "advDrop", label: "Drop", default: DEFAULT_ADVANCED.drop, step: 0.25, hint: "incompletion charted DP — receiver dropped a catchable ball" },
-      { name: "advMissedTackleForced", label: "Missed tackle forced", default: DEFAULT_ADVANCED.missedTackleForced, step: 0.05, hint: "charted missed tackles forced as the ball carrier (carries + catch-and-run) — use the rush/rec splits instead for different rates (don't set both)" },
-      { name: "advRushMtf", label: "Rushing MTF", default: DEFAULT_ADVANCED.rushMtf ?? 0, step: 0.25, hint: "missed tackles forced as a rusher only — pairs with Receiving MTF; leave combined MTF at 0 when using these" },
-      { name: "advRecMtf", label: "Receiving MTF", default: DEFAULT_ADVANCED.recMtf ?? 0, step: 0.25, hint: "missed tackles forced on catch-and-run only" },
+      { name: "advMissedTackleForced", label: "Missed tackle forced", default: DEFAULT_ADVANCED.missedTackleForced, step: 0.05, hint: "RB only — charted missed tackles forced as the ball carrier (carries + catch-and-run); use the rush/rec splits instead for different rates (don't set both)" },
+      { name: "advRushMtf", label: "Rushing MTF", default: DEFAULT_ADVANCED.rushMtf ?? 0, step: 0.25, hint: "RB only — missed tackles forced as a rusher; pairs with Receiving MTF; leave combined MTF at 0 when using these" },
+      { name: "advRecMtf", label: "Receiving MTF", default: DEFAULT_ADVANCED.recMtf ?? 0, step: 0.25, hint: "RB only — missed tackles forced on catch-and-run" },
       { name: "advPassAirYd", label: "Pass air yards (per yd)", default: DEFAULT_ADVANCED.passAirYd, step: 0.005, hint: "charted throw depth (LOS to catch point) summed over all attempts" },
       { name: "advRecAirYd", label: "Rec air yards (per yd)", default: DEFAULT_ADVANCED.recAirYd, step: 0.005, hint: "charted throw depth summed over all targets" },
       { name: "advRecYacYd", label: "YAC (per yd)", default: DEFAULT_ADVANCED.recYacYd, step: 0.005, hint: "yards after catch on receptions" },
       { name: "advRecYacoYd", label: "Rec YACO (per yd)", default: DEFAULT_ADVANCED.recYacoYd ?? 0, step: 0.005, hint: "receiving yards after contact — the after-contact share of YAC" },
       { name: "advRecFirstDown", label: "Receiving 1st down", default: DEFAULT_ADVANCED.recFirstDown ?? 0, step: 0.25, hint: "receptions that converted a first down" },
+      { name: "advRecFirstRead", label: "First-read target", default: DEFAULT_ADVANCED.recFirstRead ?? 0, step: 0.25, hint: "targets where the receiver was the QB's first read (charted read = 1)" },
       { name: "advExplosivePlay", label: "Explosive play", default: DEFAULT_ADVANCED.explosivePlay ?? 0, step: 0.5, hint: "rushes or receptions of 15+ yards" },
-      { name: "advSepPoint", label: "Separation (per route pt)", default: DEFAULT_ADVANCED.sepPoint, step: 0.05, hint: "per-route separation score (-2 pressed … +4 bust) summed across every route run — use the per-grade group below for non-linear scoring" },
+      { name: "advSepPoint", label: "Separation (per route pt)", default: DEFAULT_ADVANCED.sepPoint, step: 0.05, hint: "WR only — per-route separation score (-2 pressed … +4 bust) summed across every route run; use the per-grade group below for non-linear scoring" },
       { name: "advRushStuff", label: "Rushing stuff", default: DEFAULT_ADVANCED.rushStuff, step: 0.25, hint: "carries stopped at or behind the LOS (≤0 yds; kneels excluded) — set negative" },
       { name: "advYbcYd", label: "YBC (per yd)", default: DEFAULT_ADVANCED.ybcYd, step: 0.005, hint: "rushing yards before first contact" },
       { name: "advYacoYd", label: "YACO (per yd)", default: DEFAULT_ADVANCED.yacoYd, step: 0.005, hint: "rushing yards after contact — boost above YBC to reward broken tackles" },
@@ -109,6 +121,15 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
     ],
   },
   {
+    title: "Expected fantasy points (points per xFP, by position; 0 = off). xFP = PPR-style expected production from charted opportunities.",
+    fields: [
+      { name: "xfpQb", label: "xFP × QB", default: DEFAULT_XFP.qb, step: 0.05, hint: "points per expected fantasy point for QBs (xFP mostly from designed runs/scrambles)" },
+      { name: "xfpRb", label: "xFP × RB", default: DEFAULT_XFP.rb, step: 0.05, hint: "points per expected fantasy point for RBs (expected rush + receiving production)" },
+      { name: "xfpWr", label: "xFP × WR", default: DEFAULT_XFP.wr, step: 0.05, hint: "points per expected fantasy point for WRs" },
+      { name: "xfpTe", label: "xFP × TE", default: DEFAULT_XFP.te, step: 0.05, hint: "points per expected fantasy point for TEs — e.g. 1.25" },
+    ],
+  },
+  {
     title: "Coaching staff (scores the COACH roster slot — team scheme + results)",
     fields: [
       { name: "coachPaDropback", label: "Play-action dropback", default: DEFAULT_COACHING.paDropback, step: 0.05, hint: "every team dropback off play-action" },
@@ -120,29 +141,12 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
   },
 ];
 
-/** QB advanced mode — replaces ALL standard QB scoring when enabled.
- *  Excludes passing production on throws under 5 air yards. */
-export const QB_FIELD_GROUP: LabFieldGroup = {
-  title: "QB advanced mode (replaces standard QB scoring when enabled)",
-  fields: [
-    { name: "qbDeepYd", label: "Pass yds 5+ air (per yd)", default: FP_QB_ADVANCED.deepYd, step: 0.01, hint: "passing yards gained on throws of 5+ air yards only" },
-    { name: "qbDeepFirstDown", label: "Passing 1st down (5+ air)", default: FP_QB_ADVANCED.deepFirstDown, step: 0.25, hint: "completions of 5+ air yards that converted a first down" },
-    { name: "qbDeepTd", label: "Passing TD (5+ air)", default: FP_QB_ADVANCED.deepTd, step: 0.5, hint: "passing TDs on throws of 5+ air yards" },
-    { name: "qbSack", label: "Sack taken", default: FP_QB_ADVANCED.sack, step: 0.25, hint: "sacks (incl. half-sacks) charged to the QB" },
-    { name: "qbInt", label: "Interception", default: FP_QB_ADVANCED.interception, step: 0.5, hint: "all interceptions thrown (any depth)" },
-    { name: "qbRushYd", label: "Rush yds (per yd)", default: FP_QB_ADVANCED.rushYd, step: 0.01, hint: "QB rushing yards (0 = rushing yardage doesn't score)" },
-    { name: "qbRushTd", label: "Rushing TD", default: FP_QB_ADVANCED.rushTd, step: 0.5, hint: "QB rushing touchdowns" },
-    { name: "qbEpaPerDb", label: "EPA/dropback ×", default: FP_QB_ADVANCED.epaPerDropback, step: 1, hint: "week EPA summed over dropbacks, divided by dropbacks, times this multiplier (efficiency option — e.g. ×10)" },
-    { name: "qbEpaTotal", label: "EPA total ×", default: FP_QB_ADVANCED.epaTotal ?? 0, step: 0.5, hint: "week EPA summed over dropbacks, times this multiplier (volume option — e.g. ×2.5; zero out EPA/dropback when using this)" },
-  ],
-};
-
 /** Current value of a named form field, read out of an existing rules object —
  *  lets the league settings editor pre-fill the same field groups. */
 function ruleValue(rules: ScoringRules, name: string): number | undefined {
   const a = rules.advanced;
-  const q = rules.qbAdvanced;
   const c = rules.coaching;
+  const x = rules.xfp;
   const bonus = (stat: string) => rules.bonuses.find((b) => b.stat === stat);
   const map: Record<string, number | undefined> = {
     passYdsPerPoint: rules.passYdsPerPoint,
@@ -189,20 +193,22 @@ function ruleValue(rules: ScoringRules, name: string): number | undefined {
     advRushStuff: a?.rushStuff ?? 0,
     advYbcYd: a?.ybcYd ?? 0,
     advYacoYd: a?.yacoYd ?? 0,
+    advRecFirstRead: a?.recFirstRead ?? 0,
+    advDeepPassYd: a?.deepPassYd ?? 0,
+    advDeepPassFirstDown: a?.deepPassFirstDown ?? 0,
+    advDeepPassTd: a?.deepPassTd ?? 0,
+    advSackTaken: a?.sackTaken ?? 0,
+    advEpaPerDropback: a?.epaPerDropback ?? 0,
+    advEpaTotal: a?.epaTotal ?? 0,
+    xfpQb: x?.qb ?? DEFAULT_XFP.qb,
+    xfpRb: x?.rb ?? DEFAULT_XFP.rb,
+    xfpWr: x?.wr ?? DEFAULT_XFP.wr,
+    xfpTe: x?.te ?? DEFAULT_XFP.te,
     coachPaDropback: c?.paDropback ?? DEFAULT_COACHING.paDropback,
     coachMotionDropback: c?.motionDropback ?? DEFAULT_COACHING.motionDropback,
     coachFourthDownGo: c?.fourthDownGo ?? 0,
     coachWin: c?.win ?? DEFAULT_COACHING.win,
     coachScore30: c?.score30Bonus ?? DEFAULT_COACHING.score30Bonus,
-    qbDeepYd: q?.deepYd ?? FP_QB_ADVANCED.deepYd,
-    qbDeepFirstDown: q?.deepFirstDown ?? FP_QB_ADVANCED.deepFirstDown,
-    qbDeepTd: q?.deepTd ?? FP_QB_ADVANCED.deepTd,
-    qbSack: q?.sack ?? FP_QB_ADVANCED.sack,
-    qbInt: q?.interception ?? FP_QB_ADVANCED.interception,
-    qbRushYd: q?.rushYd ?? FP_QB_ADVANCED.rushYd,
-    qbRushTd: q?.rushTd ?? FP_QB_ADVANCED.rushTd,
-    qbEpaPerDb: q?.epaPerDropback ?? FP_QB_ADVANCED.epaPerDropback,
-    qbEpaTotal: q?.epaTotal ?? FP_QB_ADVANCED.epaTotal ?? 0,
   };
   return map[name];
 }
@@ -217,13 +223,9 @@ function withDefaults(group: LabFieldGroup, rules: ScoringRules): LabFieldGroup 
 /** Field groups pre-filled from an existing rules object (settings editor). */
 export function groupsFromRules(rules: ScoringRules): {
   groups: LabFieldGroup[];
-  qbGroup: LabFieldGroup;
-  qbEnabled: boolean;
 } {
   return {
     groups: LAB_FIELD_GROUPS.map((g) => withDefaults(g, rules)),
-    qbGroup: withDefaults(QB_FIELD_GROUP, rules),
-    qbEnabled: !!rules.qbAdvanced,
   };
 }
 
@@ -302,21 +304,19 @@ export function rulesFromForm(formData: FormData): ScoringRules {
       rushStuff: num(formData, "advRushStuff", 0),
       ybcYd: num(formData, "advYbcYd", 0),
       yacoYd: num(formData, "advYacoYd", 0),
+      recFirstRead: num(formData, "advRecFirstRead", 0),
+      deepPassYd: num(formData, "advDeepPassYd", 0),
+      deepPassFirstDown: num(formData, "advDeepPassFirstDown", 0),
+      deepPassTd: num(formData, "advDeepPassTd", 0),
+      sackTaken: num(formData, "advSackTaken", 0),
+      epaPerDropback: num(formData, "advEpaPerDropback", 0),
+      epaTotal: num(formData, "advEpaTotal", 0),
     },
-    ...(formData.get("qbAdvancedEnabled") === "on"
-      ? {
-          qbAdvanced: {
-            deepYd: num(formData, "qbDeepYd", FP_QB_ADVANCED.deepYd),
-            deepFirstDown: num(formData, "qbDeepFirstDown", FP_QB_ADVANCED.deepFirstDown),
-            deepTd: num(formData, "qbDeepTd", FP_QB_ADVANCED.deepTd),
-            sack: num(formData, "qbSack", FP_QB_ADVANCED.sack),
-            interception: num(formData, "qbInt", FP_QB_ADVANCED.interception),
-            rushYd: num(formData, "qbRushYd", FP_QB_ADVANCED.rushYd),
-            rushTd: num(formData, "qbRushTd", FP_QB_ADVANCED.rushTd),
-            epaPerDropback: num(formData, "qbEpaPerDb", FP_QB_ADVANCED.epaPerDropback),
-            epaTotal: num(formData, "qbEpaTotal", 0),
-          },
-        }
-      : {}),
+    xfp: {
+      qb: num(formData, "xfpQb", 0),
+      rb: num(formData, "xfpRb", 0),
+      wr: num(formData, "xfpWr", 0),
+      te: num(formData, "xfpTe", 0),
+    },
   };
 }

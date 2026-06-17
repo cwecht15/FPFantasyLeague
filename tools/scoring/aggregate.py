@@ -96,12 +96,36 @@ adv_rec AS (
          SUM(CASE WHEN pl.reception = 1 THEN COALESCE(b.yaco, 0) ELSE 0 END)      AS rec_yaco,
          SUM(CASE WHEN pl.reception = 1 THEN COALESCE(b.mtf, 0) ELSE 0 END)       AS rec_mtf,
          SUM(CASE WHEN pl.reception = 1 AND pl.first_down = 1 THEN 1 ELSE 0 END)  AS rec_fd,
+         -- targets where the receiver was the QB's first read (pass.read = '1')
+         SUM(CASE WHEN pl.target = 1 AND pa."read" = '1' THEN 1 ELSE 0 END)       AS first_read_targets,
          SUM(CASE WHEN pl.reception = 1 AND COALESCE(pl.rec_yards, 0) >= 15 THEN 1 ELSE 0 END) AS rec_explosive
   FROM plays pl
   LEFT JOIN pass pa ON pa.play_id = pl.play_id
   LEFT JOIN base b  ON b.play_id  = pl.play_id
   WHERE pl.receiver_id IS NOT NULL
   GROUP BY pl.receiver_id
+),
+-- Expected fantasy points (xFP): PPR-style expectation per opportunity from
+-- the xfp_model table (reception 1, yard 0.1, TD 6). Receiving and rushing rows
+-- are mutually exclusive there; a player's weekly xFP sums both.
+xfp_rec AS (
+  SELECT pl.receiver_id AS gsis_id,
+         SUM(COALESCE(x.exp_rec, 0) * 1.0
+             + COALESCE(x.exp_rec_yards, 0) * 0.1
+             + COALESCE(x.exp_rec_td, 0) * 6.0) AS xfp_rec
+  FROM plays pl
+  JOIN xfp_model x ON x.play_id = pl.play_id AND x.exp_rec IS NOT NULL
+  WHERE pl.receiver_id IS NOT NULL
+  GROUP BY pl.receiver_id
+),
+xfp_rush AS (
+  SELECT pl.runner_id AS gsis_id,
+         SUM(COALESCE(x.exp_rush_yards, 0) * 0.1
+             + COALESCE(x.exp_rush_td, 0) * 6.0) AS xfp_rush
+  FROM plays pl
+  JOIN xfp_model x ON x.play_id = pl.play_id AND x.exp_rush_yards IS NOT NULL
+  WHERE pl.runner_id IS NOT NULL
+  GROUP BY pl.runner_id
 ),
 -- QB advanced mode: 5+ air-yard splits, sacks taken, EPA over dropbacks.
 adv_qb AS (
@@ -199,10 +223,12 @@ SELECT
   COALESCE(ar.rec_yac,0)         AS rec_yac,
   COALESCE(ar.rec_yaco,0)        AS rec_yaco,
   COALESCE(ar.rec_fd,0)          AS rec_fd,
+  COALESCE(ar.first_read_targets,0) AS first_read_targets,
   COALESCE(arsh.rush_mtf,0) + COALESCE(ar.rec_mtf,0) AS mtf,
   COALESCE(arsh.rush_mtf,0)      AS rush_mtf,
   COALESCE(ar.rec_mtf,0)         AS rec_mtf,
   COALESCE(arsh.rush_explosive,0) + COALESCE(ar.rec_explosive,0) AS explosive_plays,
+  COALESCE(xr.xfp_rec,0) + COALESCE(xru.xfp_rush,0) AS xfp,
   COALESCE(aq.pass_yds_5p,0)     AS pass_yds_5p,
   COALESCE(aq.pass_td_5p,0)      AS pass_td_5p,
   COALESCE(aq.pass_fd_5p,0)      AS pass_fd_5p,
@@ -233,6 +259,8 @@ LEFT JOIN adv_rec   ar  ON ar.gsis_id  = i.gsis_id
 LEFT JOIN adv_qb    aq  ON aq.gsis_id  = i.gsis_id
 LEFT JOIN adv_routes rt ON rt.gsis_id  = i.gsis_id
 LEFT JOIN adv_rush  arsh ON arsh.gsis_id = i.gsis_id
+LEFT JOIN xfp_rec   xr  ON xr.gsis_id   = i.gsis_id
+LEFT JOIN xfp_rush  xru ON xru.gsis_id  = i.gsis_id
 LEFT JOIN roster    r   ON r.gsis_id   = i.gsis_id
 WHERE i.gsis_id IS NOT NULL
 """

@@ -89,7 +89,39 @@ export interface AdvancedRules {
   rushStuff: number; // per carry stopped at/behind the LOS — typically negative
   ybcYd: number; // per rushing yard before contact
   yacoYd: number; // per rushing yard after contact
+  recFirstRead?: number; // per target where the receiver was the QB's first read
+  // ---- passing production from charting/EPA (formerly the standalone "QB
+  //      advanced mode"; now plain additive components scored for any passer) ----
+  deepPassYd?: number; // per passing yard on throws of 5+ air yards
+  deepPassFirstDown?: number; // per passing first down on 5+ air-yard throws
+  deepPassTd?: number; // per passing TD on 5+ air-yard throws
+  sackTaken?: number; // per sack taken — typically negative
+  epaPerDropback?: number; // points per unit of (weekly EPA / dropbacks) — e.g. ×10
+  epaTotal?: number; // points per unit of TOTAL weekly EPA — e.g. ×2.5
 }
+
+/** Expected-fantasy-points scoring: multiply a player's stored weekly xFP
+ *  (PPR-style expected production) by a per-position factor. 0 = off for that
+ *  position. Lets TEs be scored e.g. xFP × 1.25 while other slots differ. */
+export interface XfpRules {
+  qb: number;
+  rb: number;
+  wr: number;
+  te: number;
+}
+
+export const DEFAULT_XFP: XfpRules = { qb: 0, rb: 0, wr: 0, te: 0 };
+
+/** Advanced charting components whose underlying stat legitimately exists for
+ *  more than one position, but which the house format restricts to a single
+ *  slot: separation grades count for WRs only; missed tackles forced for RBs
+ *  only. (scoreStatLine reads these.) */
+export const SEPARATION_POSITIONS = new Set(["WR"]);
+export const MTF_POSITIONS = new Set(["RB"]);
+/** Passing-production advanced components (5+ air-yard splits, sacks, EPA) only
+ *  score the passer — keeps a receiver's gadget-play dropback (and its wildly
+ *  inflated per-dropback EPA) from leaking onto skill-position totals. */
+export const PASSING_POSITIONS = new Set(["QB"]);
 
 export const DEFAULT_ADVANCED: AdvancedRules = {
   accurateThrow: 0,
@@ -117,34 +149,12 @@ export const DEFAULT_ADVANCED: AdvancedRules = {
   rushStuff: 0,
   ybcYd: 0,
   yacoYd: 0,
-};
-
-/** QB advanced mode: REPLACES standard offense scoring for QBs. Only
- *  production on throws of 5+ air yards counts; sacks and EPA/dropback are
- *  first-class. (Fumbles lost still score via the base fumbleLost value.) */
-export interface QbAdvancedRules {
-  deepYd: number; // per passing yard on 5+ air-yard throws
-  deepFirstDown: number; // per passing first down on 5+ air-yard throws
-  deepTd: number; // per passing TD on 5+ air-yard throws
-  sack: number; // per sack taken — typically negative
-  interception: number; // per INT — typically negative
-  rushYd: number; // per QB rushing yard
-  rushTd: number; // per QB rushing TD
-  epaPerDropback: number; // points per unit of (EPA total / dropbacks) — e.g. ×10
-  /** Points per unit of TOTAL weekly EPA (e.g. ×2.5) — the volume-based
-   *  alternative to epaPerDropback. Use one or the other; both apply if set. */
-  epaTotal?: number;
-}
-
-export const FP_QB_ADVANCED: QbAdvancedRules = {
-  deepYd: 0.25,
-  deepFirstDown: 0.5,
-  deepTd: 4,
-  sack: -1,
-  interception: -2,
-  rushYd: 0,
-  rushTd: 4,
-  epaPerDropback: 10,
+  recFirstRead: 0,
+  deepPassYd: 0,
+  deepPassFirstDown: 0,
+  deepPassTd: 0,
+  sackTaken: 0,
+  epaPerDropback: 0,
   epaTotal: 0,
 };
 
@@ -199,8 +209,9 @@ export interface ScoringRules {
   coaching?: CoachingRules;
   /** Optional advanced charting scoring; omitted = all zeros. */
   advanced?: AdvancedRules;
-  /** Optional QB advanced mode — replaces standard QB offense scoring. */
-  qbAdvanced?: QbAdvancedRules;
+  /** Optional expected-fantasy-points scoring (per-position xFP multiplier);
+   *  omitted = off for every position. */
+  xfp?: XfpRules;
 }
 
 export const DEFAULT_KICKING: KickingRules = {
@@ -272,15 +283,27 @@ export const SCORING_PRESETS: Record<ScoringPresetKey, ScoringRules> = {
     ],
   },
   fanduel: { preset: "fanduel", ...offenseBase(), reception: 0.5, bonuses: [] },
-  /** The house format: PPR base for RB/WR/TE plus MTF, with QBs scored in
-   *  advanced mode (5+ air-yard production, sacks, EPA/dropback). 12 teams. */
+  /** The house format: PPR base for RB/WR/TE plus MTF (RBs), with QB passing
+   *  scored on 5+ air-yard production, sacks, and EPA/dropback as plain additive
+   *  advanced components (standard passing-yards/TD turned off so only the deep
+   *  splits count). 12 teams. */
   fp_advanced: {
     preset: "fp_advanced",
     ...offenseBase(),
+    passYdsPerPoint: 0, // QBs score deep (5+ air) passing only — see advanced.deepPass*
+    passTd: 0,
+    interception: -2,
     reception: 1,
     bonuses: [],
-    advanced: { ...DEFAULT_ADVANCED, missedTackleForced: 2 },
-    qbAdvanced: { ...FP_QB_ADVANCED },
+    advanced: {
+      ...DEFAULT_ADVANCED,
+      missedTackleForced: 2, // RB-only (see MTF_POSITIONS)
+      deepPassYd: 0.25,
+      deepPassFirstDown: 0.5,
+      deepPassTd: 4,
+      sackTaken: -1,
+      epaPerDropback: 10,
+    },
   },
 };
 
