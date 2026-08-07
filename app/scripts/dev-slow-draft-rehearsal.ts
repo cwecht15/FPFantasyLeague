@@ -25,7 +25,8 @@ async function main() {
   const { createLeague, joinLeague } = await import("../src/lib/leagues/service");
 
   const numUsers = Number(process.argv[2] ?? 3);
-  const secondsPerPick = Math.max(Number(process.argv[3] ?? 30), 30);
+  const spRaw = Number(process.argv[3] ?? 30);
+  const secondsPerPick = spRaw <= 0 ? 0 : Math.max(spRaw, 30); // 0 = no clock
   const rounds = Number(process.argv[4] ?? 2);
 
   // Reset any previous rehearsal league (cascades picks/rosters/settings).

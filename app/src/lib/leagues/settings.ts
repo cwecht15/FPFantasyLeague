@@ -108,8 +108,15 @@ export function starterSlots(t: RosterTemplate): { slot: RosterSlot; count: numb
 
 export const draftConfigSchema = z.object({
   type: z.enum(["snake"]).default("snake"),
-  /** Seconds on the clock per pick. Default 8h for an async/slow draft. */
-  secondsPerPick: z.number().int().min(30).max(7 * 24 * 3600).default(8 * 3600),
+  /** Seconds on the clock per pick; 0 = no clock (picks never expire or
+   *  autopick — the draft moves only when managers pick). Default 8h. */
+  secondsPerPick: z
+    .number()
+    .int()
+    .min(0)
+    .max(7 * 24 * 3600)
+    .refine((v) => v === 0 || v >= 30, "use 0 (no clock) or at least 30 seconds")
+    .default(8 * 3600),
   orderMode: z.enum(["manual", "random", "reverse_standings"]).default("random"),
   thirdRoundReversal: z.boolean().default(false),
   // Matches the default roster template size (15 slots incl. bench + IR).

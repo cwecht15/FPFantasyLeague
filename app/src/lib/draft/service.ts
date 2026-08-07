@@ -117,7 +117,12 @@ export async function startDraft(
 
     const first = inserted.find((p) => p.overallPick === 1)!;
     const now = new Date();
-    const deadline = new Date(now.getTime() + config.secondsPerPick * 1000);
+    // secondsPerPick 0 = no clock: the pick has no deadline, so it can never
+    // expire into an autopick — the draft only moves when someone picks.
+    const deadline =
+      config.secondsPerPick > 0
+        ? new Date(now.getTime() + config.secondsPerPick * 1000)
+        : null;
     await tx
       .update(draftPicks)
       .set({ clockStartedAt: now, deadlineAt: deadline })
@@ -243,7 +248,9 @@ export async function makePick(opts: {
       await client.query(
         `UPDATE draft_picks
             SET clock_started_at = now(),
-                deadline_at = now() + ($2 || ' seconds')::interval
+                deadline_at = CASE WHEN $2::int > 0
+                                   THEN now() + ($2 || ' seconds')::interval
+                                   ELSE NULL END
           WHERE id = $1`,
         [next.id, draft.seconds_per_pick],
       );
@@ -497,7 +504,10 @@ export async function setDraftPaused(draftId: number, paused: boolean): Promise<
           .update(draftPicks)
           .set({
             clockStartedAt: new Date(),
-            deadlineAt: sql`now() + (${d.secondsPerPick} || ' seconds')::interval`,
+            deadlineAt:
+              d.secondsPerPick > 0
+                ? sql`now() + (${d.secondsPerPick} || ' seconds')::interval`
+                : null,
           })
           .where(eq(draftPicks.id, d.currentPickId));
       }
