@@ -8,6 +8,7 @@ import {
   scoringCardSections,
   scoringCardText,
 } from "@/lib/scoring/rules-card";
+import { CardImageActions } from "@/components/card-image-actions";
 import { CopyButton } from "@/components/copy-button";
 import { PrintButton } from "@/components/print-button";
 import { ScoringCardView } from "@/components/scoring-card-view";
@@ -35,15 +36,17 @@ export default async function ScoringCardPage({
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-[760px] px-6 py-8">
-        <div className="mb-6 flex items-center gap-2.5 print:hidden">
+      <div className="card-shot mx-auto max-w-[760px] px-6 py-8">
+        <div className="card-toolbar mb-6 flex flex-wrap items-center gap-2.5 print:hidden">
           <Link href={`/leagues/${slug}/settings`} className="btn2">
             ← Settings
           </Link>
           <span className="flex-1" />
+          <CardImageActions filename={`scoring-${slug}.png`} />
           <CopyButton
             text={scoringCardText(league.name, league.season, rules)}
             toast="Scoring rules copied as text"
+            label="Copy text"
           />
           <PrintButton />
         </div>

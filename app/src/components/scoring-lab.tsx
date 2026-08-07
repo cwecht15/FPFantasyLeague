@@ -30,13 +30,41 @@ function LabLeaderboard({
   limit?: number;
 }) {
   const [posFilter, setPosFilter] = useState("ALL");
+  // Column sort: null = server order (total points). Click a numeric header to
+  // sort descending, again for ascending, a third time to reset.
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   const present = new Set(allRows.map((r) => r.position));
   const positions = POSITION_ORDER.filter((p) => present.has(p));
 
-  const rows =
+  const filtered =
     posFilter === "ALL"
       ? allRows.filter((r) => r.rank <= limit)
       : allRows.filter((r) => r.position === posFilter);
+
+  const sortValue = (r: (typeof allRows)[number]): number | undefined => {
+    if (!sort) return undefined;
+    if (sort.key === "points") return r.points;
+    if (sort.key === "ppg") return r.ppg;
+    if (sort.key === "games") return r.games;
+    return r.components[sort.key];
+  };
+  const rows = sort
+    ? [...filtered].sort((a, b) => {
+        const va = sortValue(a);
+        const vb = sortValue(b);
+        // Rows without the component always sink to the bottom.
+        if (va === undefined) return vb === undefined ? 0 : 1;
+        if (vb === undefined) return -1;
+        return (vb - va) * sort.dir;
+      })
+    : filtered;
+
+  const cycleSort = (key: string) =>
+    setSort((s) =>
+      s?.key !== key ? { key, dir: 1 } : s.dir === 1 ? { key, dir: -1 } : null,
+    );
+  const arrow = (key: string) =>
+    sort?.key === key ? (sort.dir === 1 ? " ▼" : " ▲") : "";
 
   const totals = new Map<string, number>();
   for (const r of rows) {
@@ -74,12 +102,36 @@ function LabLeaderboard({
               <th className="sticky left-8 bg-ink px-2 py-2">Player</th>
               <th className="px-2 py-2">Pos</th>
               <th className="px-2 py-2">Team</th>
-              <th className="px-2 py-2 text-right">G</th>
-              <th className="px-2 py-2 text-right">Points</th>
-              <th className="px-2 py-2 text-right">PPG</th>
+              <th
+                className="cursor-pointer select-none px-2 py-2 text-right hover:text-paper"
+                title="Sort by games"
+                onClick={() => cycleSort("games")}
+              >
+                G{arrow("games")}
+              </th>
+              <th
+                className="cursor-pointer select-none px-2 py-2 text-right hover:text-paper"
+                title="Sort by total points"
+                onClick={() => cycleSort("points")}
+              >
+                Points{arrow("points")}
+              </th>
+              <th
+                className="cursor-pointer select-none px-2 py-2 text-right hover:text-paper"
+                title="Sort by points per game"
+                onClick={() => cycleSort("ppg")}
+              >
+                PPG{arrow("ppg")}
+              </th>
               {cols.map((c) => (
-                <th key={c} className="px-2 py-2 text-right text-xs font-normal text-faint">
+                <th
+                  key={c}
+                  className="cursor-pointer select-none px-2 py-2 text-right text-xs font-normal text-faint hover:text-paper"
+                  title={`Sort by ${c}`}
+                  onClick={() => cycleSort(c)}
+                >
                   {c}
+                  {arrow(c)}
                 </th>
               ))}
             </tr>

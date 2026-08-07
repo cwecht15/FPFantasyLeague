@@ -2,7 +2,15 @@
 
 import { fireToast } from "@/components/toast";
 
-export function CopyButton({ text, toast }: { text: string; toast: string }) {
+export function CopyButton({
+  text,
+  toast,
+  label = "Copy",
+}: {
+  text: string;
+  toast: string;
+  label?: string;
+}) {
   return (
     <button
       type="button"
@@ -16,7 +24,7 @@ export function CopyButton({ text, toast }: { text: string; toast: string }) {
         }
       }}
     >
-      Copy
+      {label}
     </button>
   );
 }

@@ -8,6 +8,7 @@ import {
   scoringCardText,
 } from "@/lib/scoring/rules-card";
 import type { ScoringRules } from "@/lib/scoring/scoring-systems";
+import { CardImageActions } from "@/components/card-image-actions";
 import { CopyButton } from "@/components/copy-button";
 import { PrintButton } from "@/components/print-button";
 import { ScoringCardView } from "@/components/scoring-card-view";
@@ -50,15 +51,19 @@ export function ScoringCardOverlay({
           }
         }
       `}</style>
-      <div className="mx-auto max-w-[760px] px-6 py-8">
-        <div className="mb-6 flex items-center gap-2.5 print:hidden">
+      <div className="card-shot mx-auto max-w-[760px] px-6 py-8">
+        <div className="card-toolbar mb-6 flex flex-wrap items-center gap-2.5 print:hidden">
           <button type="button" className="btn2" onClick={onClose}>
             ← Back to Lab
           </button>
           <span className="flex-1" />
+          <CardImageActions
+            filename={`scoring-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`}
+          />
           <CopyButton
             text={scoringCardText(title, season, rules)}
             toast="Scoring rules copied as text"
+            label="Copy text"
           />
           <PrintButton />
         </div>
