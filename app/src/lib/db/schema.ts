@@ -602,6 +602,8 @@ export const playerWeekStats = pgTable(
     paDropbacks: integer("pa_dropbacks"), // play-action dropbacks
     motionDropbacks: integer("motion_dropbacks"), // dropbacks with pre/at-snap motion
     fourthDownAttempts: integer("fourth_down_attempts"), // 4th-down go-for-it snaps (pass/run, no kneels)
+    run2ndLong: integer("run_2nd_long"), // designed runs on 2nd & 7+ (no scrambles/kneels)
+    deep2ndShort: integer("deep_2nd_short"), // 15+ air-yard attempts on 2nd & 1-2
     teamWin: integer("team_win"), // 1 = won, 0 = lost/tied, NULL = not final
     teamPointsScored: integer("team_points_scored"), // offense's final score
     // IDP (only set on defender rows)

@@ -260,6 +260,12 @@ export interface CoachingRules {
   /** Per 4th-down go-for-it snap — a real pass or run on 4th down (fake
    *  punts/FGs count; kneels don't). Optional so older saved sets validate. */
   fourthDownGo?: number;
+  /** Per designed run called on 2nd & 7+ (scrambles/kneels excluded) —
+   *  typically negative, taxing predictable playcalling. */
+  run2ndLong?: number;
+  /** Per deep pass attempt (15+ charted air yards) on 2nd & 1-2 —
+   *  rewarding aggressive shot-taking when short yardage is on the table. */
+  deepAtt2ndShort?: number;
   win: number; // bonus when the team wins
   score30Bonus: number; // bonus when the offense scores 30+ points
 }
@@ -268,6 +274,8 @@ export const DEFAULT_COACHING: CoachingRules = {
   paDropback: 0.2,
   motionDropback: 0.1,
   fourthDownGo: 0,
+  run2ndLong: 0,
+  deepAtt2ndShort: 0,
   win: 5,
   score30Bonus: 10,
 };

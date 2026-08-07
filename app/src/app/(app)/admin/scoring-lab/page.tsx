@@ -137,6 +137,8 @@ export default async function ScoringLabPage({
             ["EPA total", "The same weekly EPA sum, unscaled by volume — multiplied by your factor (e.g. ×2.5). The volume-based alternative to EPA/dropback."],
             ["PA / motion dropbacks (COACH)", "Team dropbacks off play-action, and team dropbacks with pre-snap or at-snap motion — from charting, credited to the team's coaching staff."],
             ["4th-down go (COACH)", "Going for it on 4th down: any real pass or run snap on 4th down. Punts and FG attempts don't count (fakes do); kneels are excluded."],
+            ["Run on 2nd & 7+ (COACH)", "A designed run called on 2nd down with 7 or more yards to go — scrambles and kneels excluded. Typically scored negative to tax predictable playcalling."],
+            ["Deep shot on 2nd & 1-2 (COACH)", "A pass attempt of 15+ charted air yards on 2nd down with 1-2 yards to go — rewards taking a shot when the short-yardage down is in hand."],
             ["Team win / 30+ points (COACH)", "Flat bonuses on the coaching staff when the team wins (ties score zero) and when the offense finishes with 30 or more points."],
             ["Position scope", "Which positions earn each multi-position advanced stat. House defaults: explosives, missed tackles forced and rushing detail score RBs; separation and receiving first downs score WRs; the other receiving stats score every pass-catcher. Uncheck a position to drop that stat from its total. Basic passing accuracy and the 5+ air-yard / EPA / incompletion block always score the QB only."],
           ].map(([term, def]) => (

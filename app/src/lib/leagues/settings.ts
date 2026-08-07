@@ -216,6 +216,8 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       paDropback: z.number(),
       motionDropback: z.number(),
       fourthDownGo: z.number().optional(),
+      run2ndLong: z.number().optional(),
+      deepAtt2ndShort: z.number().optional(),
       win: z.number(),
       score30Bonus: z.number(),
     })

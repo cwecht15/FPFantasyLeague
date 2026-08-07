@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scoreStatLine } from "./score-stat-line";
-import { DEFAULT_ADVANCED, SCORING_PRESETS } from "./scoring-systems";
+import { DEFAULT_ADVANCED, DEFAULT_COACHING, SCORING_PRESETS } from "./scoring-systems";
 
 const ppr = SCORING_PRESETS.ppr;
 const standard = SCORING_PRESETS.standard;
@@ -86,6 +86,26 @@ describe("scoreStatLine — coaching staff (COACH)", () => {
   it("missing team result (game not final) scores no result bonuses", () => {
     const line = { paDropbacks: 5, motionDropbacks: 5 };
     expect(scoreStatLine(line, ppr).points).toBeCloseTo(5 * 0.2 + 5 * 0.1, 2);
+  });
+
+  it("playcalling tendencies: run on 2nd & 7+ taxes, deep shot on 2nd & short rewards", () => {
+    const rules = {
+      ...ppr,
+      coaching: { ...DEFAULT_COACHING, run2ndLong: -1, deepAtt2ndShort: 2, paDropback: 0, motionDropback: 0, win: 0, score30Bonus: 0 },
+    };
+    const { points } = scoreStatLine(
+      { run2ndLong: 6, deep2ndShort: 3 },
+      rules,
+      { position: "COACH" },
+    );
+    // 6*-1 + 3*2 = 0 … and each side alone:
+    expect(points).toBeCloseTo(0, 2);
+    expect(
+      scoreStatLine({ run2ndLong: 6 }, rules, { position: "COACH" }).points,
+    ).toBeCloseTo(-6, 2);
+    expect(
+      scoreStatLine({ deep2ndShort: 3 }, rules, { position: "COACH" }).points,
+    ).toBeCloseTo(6, 2);
   });
 
   it("4th-down go-for-it scores per attempt when configured (default off)", () => {

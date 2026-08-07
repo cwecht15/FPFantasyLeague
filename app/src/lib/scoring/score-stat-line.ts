@@ -82,6 +82,8 @@ export interface RawStatLine {
   paDropbacks?: number;
   motionDropbacks?: number;
   fourthDownAttempts?: number;
+  run2ndLong?: number;
+  deep2ndShort?: number;
   teamWin?: number;
   teamPointsScored?: number;
   // ---- IDP (individual defender) ----
@@ -276,6 +278,8 @@ export function scoreStatLine(
     add("paDropbacks", n(stats.paDropbacks) * c.paDropback);
     add("motionDropbacks", n(stats.motionDropbacks) * c.motionDropback);
     add("fourthDownGo", n(stats.fourthDownAttempts) * n(c.fourthDownGo));
+    add("run2ndLong", n(stats.run2ndLong) * n(c.run2ndLong));
+    add("deep2ndShort", n(stats.deep2ndShort) * n(c.deepAtt2ndShort));
     add("teamWin", n(stats.teamWin) * c.win);
     if (stats.teamPointsScored !== undefined && stats.teamPointsScored >= 30) {
       add("scored30Plus", c.score30Bonus);

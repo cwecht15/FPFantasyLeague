@@ -416,7 +416,17 @@ SELECT
   SUM(CASE WHEN pl.down = 4
             AND (pl.dropback = 1 OR pl.runner_id IS NOT NULL)
             AND COALESCE(b.primary_concept, '') <> 'Kneel'
-           THEN 1 ELSE 0 END)                                    AS fourth_down_attempts
+           THEN 1 ELSE 0 END)                                    AS fourth_down_attempts,
+  -- playcalling tendencies: designed run (no scramble, no kneel) on 2nd & 7+
+  SUM(CASE WHEN pl.down = 2 AND COALESCE(pl.distance, 0) >= 7
+            AND pl.runner_id IS NOT NULL AND COALESCE(pl.scramble, 0) = 0
+            AND COALESCE(b.primary_concept, '') <> 'Kneel'
+           THEN 1 ELSE 0 END)                                    AS run_2nd_long,
+  -- deep shot (15+ charted air yards) attempted on 2nd & short (1-2 to go)
+  SUM(CASE WHEN pl.down = 2 AND pl.distance BETWEEN 1 AND 2
+            AND COALESCE(pl.attempt, 0) = 1
+            AND COALESCE(b.depth_target, 0) >= 15
+           THEN 1 ELSE 0 END)                                    AS deep_2nd_short
 FROM plays pl
 LEFT JOIN base b ON b.play_id = pl.play_id
 WHERE pl.offense IS NOT NULL

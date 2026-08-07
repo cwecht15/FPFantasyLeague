@@ -169,6 +169,8 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
       ...on("Play-action dropback", c.paDropback),
       ...on("Dropback w/ motion", c.motionDropback),
       ...on("4th-down go", c.fourthDownGo),
+      ...on("Run on 2nd & 7+", c.run2ndLong),
+      ...on("Deep shot on 2nd & 1-2", c.deepAtt2ndShort),
       ...on("Team win", c.win),
       ...on("30+ points scored", c.score30Bonus),
     ];
