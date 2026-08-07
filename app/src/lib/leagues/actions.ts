@@ -26,7 +26,7 @@ import {
   scoringRulesSchema,
   waiverConfigSchema,
 } from "@/lib/leagues/settings";
-import { getScoringPreset } from "@/lib/scoring/scoring-systems";
+import { getScoringPreset, type ScoringRules } from "@/lib/scoring/scoring-systems";
 import { enqueue } from "@/lib/jobs/queue";
 
 export interface FormState {
@@ -69,11 +69,28 @@ export async function createLeagueAction(
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
+  // "set:<id>" selects a saved Scoring Lab set as the league's full rule set;
+  // plain values are built-in preset keys.
+  let scoringPreset = parsed.data.scoringPreset;
+  let scoringRules: ScoringRules | undefined;
+  if (scoringPreset.startsWith("set:")) {
+    const { scoringSets } = await import("@/lib/db/schema");
+    const [set] = await db
+      .select()
+      .from(scoringSets)
+      .where(eq(scoringSets.id, Number(scoringPreset.slice(4))))
+      .limit(1);
+    if (!set) return { error: "Scoring set not found" };
+    scoringRules = set.rules;
+    scoringPreset = "fp_advanced"; // base for non-scoring settings (roster etc.)
+  }
+
   const league = await createLeague({
     name: parsed.data.name,
     season: CURRENT_SEASON,
     numTeams: parsed.data.numTeams,
-    scoringPreset: parsed.data.scoringPreset,
+    scoringPreset,
+    scoringRules,
     teamName: parsed.data.teamName,
     commissionerUserId: user.id,
   });

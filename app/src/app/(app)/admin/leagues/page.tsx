@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { leagues, teams } from "@/lib/db/schema";
+import { leagues, scoringSets, teams } from "@/lib/db/schema";
 import { createLeagueAction, assignUserAction } from "@/lib/leagues/actions";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/copy-button";
@@ -27,6 +27,11 @@ export default async function AdminLeaguesPage() {
     .leftJoin(teams, eq(teams.leagueId, leagues.id))
     .groupBy(leagues.id)
     .orderBy(leagues.createdAt);
+
+  const labSets = await db
+    .select({ id: scoringSets.id, name: scoringSets.name })
+    .from(scoringSets)
+    .orderBy(desc(scoringSets.updatedAt));
 
   const statusChip = (status: string, isDemo: boolean) => {
     const label = isDemo ? `demo · ${status.replace("_", " ")}` : status.replace("_", " ");
@@ -122,13 +127,24 @@ export default async function AdminLeaguesPage() {
                   </select>
                 </div>
                 <div className="field flex-1">
-                  <label>Scoring preset</label>
+                  <label>Scoring system</label>
                   <select name="scoringPreset" defaultValue="fp_advanced" className="input">
-                    {SCORING_PRESET_OPTIONS.map((o) => (
-                      <option key={o.key} value={o.key}>
-                        {o.label}
-                      </option>
-                    ))}
+                    {labSets.length > 0 && (
+                      <optgroup label="Scoring Lab sets">
+                        {labSets.map((s) => (
+                          <option key={`set:${s.id}`} value={`set:${s.id}`}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Presets">
+                      {SCORING_PRESET_OPTIONS.map((o) => (
+                        <option key={o.key} value={o.key}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>

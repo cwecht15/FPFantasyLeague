@@ -15,6 +15,7 @@ import {
   teams,
 } from "@/lib/db/schema";
 import { defaultLeagueSettings } from "@/lib/leagues/settings";
+import type { ScoringRules } from "@/lib/scoring/scoring-systems";
 
 export type League = typeof leagues.$inferSelect;
 export type Team = typeof teams.$inferSelect;
@@ -114,12 +115,15 @@ export async function createLeague(opts: {
   season: number;
   numTeams: number;
   scoringPreset: string;
+  /** Full rule-set override (e.g. a saved Scoring Lab set) — wins over preset. */
+  scoringRules?: ScoringRules;
   /** Omit for centrally-run leagues — the admin gets membership, no team. */
   teamName?: string;
   commissionerUserId: string;
   isDemo?: boolean;
 }): Promise<League> {
   const settings = defaultLeagueSettings(opts.scoringPreset);
+  if (opts.scoringRules) settings.scoringRules = opts.scoringRules;
   return db.transaction(async (tx) => {
     const [league] = await tx
       .insert(leagues)
