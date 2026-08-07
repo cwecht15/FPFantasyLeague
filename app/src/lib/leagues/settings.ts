@@ -247,6 +247,8 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       sackTaken: z.number().optional(),
       epaPerDropback: z.number().optional(),
       epaTotal: z.number().optional(),
+      incompletion: z.number().optional(),
+      scope: z.record(z.string(), z.array(z.enum(["QB", "RB", "WR", "TE"]))).optional(),
     })
     .optional(),
   xfp: z

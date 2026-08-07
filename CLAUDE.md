@@ -42,13 +42,18 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    additive rule set scores every slot (there is **no** separate "QB advanced mode" — that
    was removed). QBs: basic passing-yards/TD turned off, scored instead on 5+ air-yard
    passing production (0.25/yd, 0.5/1D, 4/TD), sacks −1, INT −2, EPA-per-dropback ×10 (an
-   EPA-total × option also exists) — these passing/EPA components score **QB only**; QB
-   rushing scores at the standard rate. RB/WR/TE: PPR. **Missed tackles forced score RBs
-   only (+2)**; **per-route separation scores WRs only**. The Scoring Lab also exposes rush/rec
-   MTF splits, rec YACO, receiving first downs, **first-read targets**, explosive plays
-   (15+ yd), per-grade separation, **expected fantasy points (xFP) as a per-position
-   multiplier** (e.g. TE ×1.25), and the COACH rules. Position scoping lives in
-   `score-stat-line.ts` (`SEPARATION_POSITIONS` / `MTF_POSITIONS` / `PASSING_POSITIONS`).
+   EPA-total × option also exists), plus an optional **incompletion** penalty (att − comp,
+   QB only — for taxing high-volume inaccuracy) — these passing/EPA components score **QB
+   only**; QB rushing scores at the standard rate. RB/WR/TE: PPR. **Missed tackles forced
+   score RBs only (+2)**; **per-route separation scores WRs only**. The Scoring Lab also
+   exposes rush/rec MTF splits, rec YACO, receiving first downs, **first-read targets**,
+   explosive plays (15+ yd), per-grade separation, **expected fantasy points (xFP) as a
+   per-position multiplier** (e.g. TE ×1.25), and the COACH rules. **Which positions earn
+   each multi-position advanced stat is admin-configurable** via the Lab/settings *position
+   scope* matrix (`AdvancedRules.scope`), defaulting to `ADVANCED_SCOPE_DEFAULTS` in
+   `scoring-systems.ts` (explosives/rushing-detail/MTF → RB, separation/Re1D → WR, other
+   receiving stats → all pass-catchers); `score-stat-line.ts` reads it via `scopeHasPosition`.
+   The passing block stays QB-only (fixed `PASSING_POSITIONS`).
 8. **Email/password auth only.** No Google OAuth (owner decision — don't re-suggest it).
 9. Demo leagues (`leagues.is_demo`) are visible to site admins only, everywhere.
 

@@ -6,12 +6,18 @@
  */
 
 import {
+  ADVANCED_SCOPE_DEFAULTS,
+  ADVANCED_SCOPE_KEYS,
   DEFAULT_ADVANCED,
   DEFAULT_COACHING,
   DEFAULT_DST,
   DEFAULT_KICKING,
   DEFAULT_XFP,
   SCORING_PRESETS,
+  SCOPE_POSITIONS,
+  type AdvancedScope,
+  type AdvancedScopeKey,
+  type ScopePosition,
   type ScoringRules,
 } from "@/lib/scoring/scoring-systems";
 
@@ -47,6 +53,7 @@ export const LAB_FIELD_GROUPS: LabFieldGroup[] = [
       { name: "advDeepPassFirstDown", label: "Passing 1st down (5+ air)", default: DEFAULT_ADVANCED.deepPassFirstDown ?? 0, step: 0.25, hint: "completions of 5+ air yards that converted a first down" },
       { name: "advDeepPassTd", label: "Passing TD (5+ air)", default: DEFAULT_ADVANCED.deepPassTd ?? 0, step: 0.5, hint: "passing TDs on throws of 5+ air yards" },
       { name: "advSackTaken", label: "Sack taken", default: DEFAULT_ADVANCED.sackTaken ?? 0, step: 0.25, hint: "sacks (incl. half-sacks) charged to the passer — set negative" },
+      { name: "advIncompletion", label: "Incompletion", default: DEFAULT_ADVANCED.incompletion ?? 0, step: 0.1, hint: "incomplete pass attempts (attempts − completions; includes INTs, drops, throwaways) — set negative to penalize volume/inaccuracy" },
       { name: "advEpaPerDropback", label: "EPA/dropback ×", default: DEFAULT_ADVANCED.epaPerDropback ?? 0, step: 1, hint: "weekly EPA summed over dropbacks, divided by dropbacks, times this multiplier (efficiency option — e.g. ×10)" },
       { name: "advEpaTotal", label: "EPA total ×", default: DEFAULT_ADVANCED.epaTotal ?? 0, step: 0.5, hint: "weekly EPA summed over dropbacks, times this multiplier (volume option — e.g. ×2.5; zero out EPA/dropback when using this)" },
     ],
@@ -198,6 +205,7 @@ function ruleValue(rules: ScoringRules, name: string): number | undefined {
     advDeepPassFirstDown: a?.deepPassFirstDown ?? 0,
     advDeepPassTd: a?.deepPassTd ?? 0,
     advSackTaken: a?.sackTaken ?? 0,
+    advIncompletion: a?.incompletion ?? 0,
     advEpaPerDropback: a?.epaPerDropback ?? 0,
     advEpaTotal: a?.epaTotal ?? 0,
     xfpQb: x?.qb ?? DEFAULT_XFP.qb,
@@ -220,12 +228,32 @@ function withDefaults(group: LabFieldGroup, rules: ScoringRules): LabFieldGroup 
   };
 }
 
-/** Field groups pre-filled from an existing rules object (settings editor). */
+/** Resolved per-family position scope for the matrix UI: every scopeable key
+ *  mapped to the positions that earn it, falling back to the house defaults
+ *  when a rule set doesn't pin the key. */
+export type ScopeState = Record<AdvancedScopeKey, ScopePosition[]>;
+
+export function scopeFromRules(rules: ScoringRules): ScopeState {
+  const s = rules.advanced?.scope;
+  const out = {} as ScopeState;
+  for (const key of ADVANCED_SCOPE_KEYS) out[key] = s?.[key] ?? ADVANCED_SCOPE_DEFAULTS[key];
+  return out;
+}
+
+/** Default scope state (no rules loaded) — the house defaults. */
+export function defaultScopeState(): ScopeState {
+  return scopeFromRules(SCORING_PRESETS.ppr);
+}
+
+/** Field groups + scope pre-filled from an existing rules object (settings
+ *  editor and the Lab's "keep what I just ran" re-seed). */
 export function groupsFromRules(rules: ScoringRules): {
   groups: LabFieldGroup[];
+  scope: ScopeState;
 } {
   return {
     groups: LAB_FIELD_GROUPS.map((g) => withDefaults(g, rules)),
+    scope: scopeFromRules(rules),
   };
 }
 
@@ -252,6 +280,20 @@ export function rulesFromForm(formData: FormData): ScoringRules {
 
   const reception = num(formData, "reception", 1);
   const tePrem = num(formData, "tePremiumReception", reception);
+
+  // Position scope. Only build it when the scope matrix was actually rendered
+  // (hidden `advScopePresent` marker) — otherwise leave it undefined so
+  // scoreStatLine falls back to ADVANCED_SCOPE_DEFAULTS rather than reading
+  // "no checkbox" as "scored for nobody".
+  let scope: AdvancedScope | undefined;
+  if (formData.get("advScopePresent") !== null) {
+    scope = {};
+    for (const key of ADVANCED_SCOPE_KEYS) {
+      scope[key] = SCOPE_POSITIONS.filter(
+        (p) => formData.get(`scope_${key}_${p}`) !== null,
+      );
+    }
+  }
 
   return {
     // Yards-per-point divisors: clamp negatives to 0; 0 = component off.
@@ -309,8 +351,10 @@ export function rulesFromForm(formData: FormData): ScoringRules {
       deepPassFirstDown: num(formData, "advDeepPassFirstDown", 0),
       deepPassTd: num(formData, "advDeepPassTd", 0),
       sackTaken: num(formData, "advSackTaken", 0),
+      incompletion: num(formData, "advIncompletion", 0),
       epaPerDropback: num(formData, "advEpaPerDropback", 0),
       epaTotal: num(formData, "advEpaTotal", 0),
+      ...(scope ? { scope } : {}),
     },
     xfp: {
       qb: num(formData, "xfpQb", 0),

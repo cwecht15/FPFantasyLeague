@@ -8,7 +8,7 @@
  * so one function scores every roster slot — irrelevant fields contribute 0.
  */
 
-import { MTF_POSITIONS, PASSING_POSITIONS, SEPARATION_POSITIONS, type ScoringRules } from "./scoring-systems";
+import { PASSING_POSITIONS, scopeHasPosition, type ScoringRules } from "./scoring-systems";
 
 export interface RawStatLine {
   // ---- offense ----
@@ -46,6 +46,7 @@ export interface RawStatLine {
   passTd5p?: number;
   passFd5p?: number;
   sacksTaken?: number;
+  incompletions?: number;
   dropbacks?: number;
   epaTotal?: number;
   routes?: number;
@@ -188,35 +189,37 @@ export function scoreStatLine(
   }
 
   // ---- advanced charting (optional) ----
-  // Some advanced stats exist for multiple positions in the data but are
-  // restricted to one slot in the house format: separation → WR only, all
-  // missed-tackles-forced → RB only (see SEPARATION_POSITIONS / MTF_POSITIONS).
+  // Many advanced stats exist for multiple positions in the data; which slots
+  // earn each one is admin-configurable via `rules.advanced.scope` (the Lab /
+  // settings scope matrix), falling back to ADVANCED_SCOPE_DEFAULTS — e.g.
+  // explosives → RB, receiving first downs → WR. `has(key)` answers whether
+  // this player's position earns that scopeable family.
   if (rules.advanced) {
     const a = rules.advanced;
     const pos = opts.position ?? "";
-    const scoresSeparation = SEPARATION_POSITIONS.has(pos);
-    const scoresMtf = MTF_POSITIONS.has(pos);
+    const has = (key: Parameters<typeof scopeHasPosition>[1]) =>
+      scopeHasPosition(a.scope, key, pos);
     const scoresPassing = PASSING_POSITIONS.has(pos);
 
     add("accurateThrow", n(stats.accurateThrows) * a.accurateThrow);
     add("catchableThrow", n(stats.catchableThrows) * n(a.catchableThrow));
     add("turnoverWorthy", n(stats.toWorthyThrows) * a.turnoverWorthyThrow);
     add("heroThrow", n(stats.heroThrows) * a.heroThrow);
-    add("heroCatch", n(stats.heroCatches) * a.heroCatch);
-    add("drop", n(stats.drops) * a.drop);
-    if (scoresMtf) {
+    if (has("heroCatch")) add("heroCatch", n(stats.heroCatches) * a.heroCatch);
+    if (has("drop")) add("drop", n(stats.drops) * a.drop);
+    if (has("mtf")) {
       add("missedTackleForced", n(stats.mtf) * a.missedTackleForced);
       add("rushMtf", n(stats.rushMtf) * n(a.rushMtf));
       add("recMtf", n(stats.recMtf) * n(a.recMtf));
     }
     add("passAirYds", n(stats.passAirYds) * a.passAirYd);
-    add("recAirYds", n(stats.recAirYds) * a.recAirYd);
-    add("recYac", n(stats.recYac) * a.recYacYd);
-    add("recYaco", n(stats.recYaco) * n(a.recYacoYd));
-    add("recFirstDown", n(stats.recFd) * n(a.recFirstDown));
-    add("recFirstRead", n(stats.firstReadTargets) * n(a.recFirstRead));
-    add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
-    if (scoresSeparation) {
+    if (has("recAirYd")) add("recAirYds", n(stats.recAirYds) * a.recAirYd);
+    if (has("recYac")) add("recYac", n(stats.recYac) * a.recYacYd);
+    if (has("recYaco")) add("recYaco", n(stats.recYaco) * n(a.recYacoYd));
+    if (has("recFirstDown")) add("recFirstDown", n(stats.recFd) * n(a.recFirstDown));
+    if (has("recFirstRead")) add("recFirstRead", n(stats.firstReadTargets) * n(a.recFirstRead));
+    if (has("explosivePlay")) add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
+    if (has("separation")) {
       add("separation", n(stats.sepTotal) * a.sepPoint);
       add("sepM2", n(stats.sepM2) * n(a.sepM2));
       add("sepM1", n(stats.sepM1) * n(a.sepM1));
@@ -225,9 +228,11 @@ export function scoreStatLine(
       add("sepP3", n(stats.sepP3) * n(a.sepP3));
       add("sepP4", n(stats.sepP4) * n(a.sepP4));
     }
-    add("rushStuff", n(stats.rushStuffs) * a.rushStuff);
-    add("rushYbc", n(stats.rushYbc) * a.ybcYd);
-    add("rushYaco", n(stats.rushYaco) * a.yacoYd);
+    if (has("rushDetail")) {
+      add("rushStuff", n(stats.rushStuffs) * a.rushStuff);
+      add("rushYbc", n(stats.rushYbc) * a.ybcYd);
+      add("rushYaco", n(stats.rushYaco) * a.yacoYd);
+    }
 
     // ---- passing production from charting/EPA (QB only — see PASSING_POSITIONS;
     //      keeps gadget-play dropbacks off skill players) ----
@@ -236,6 +241,7 @@ export function scoreStatLine(
       add("deepPassFirstDown", n(stats.passFd5p) * n(a.deepPassFirstDown));
       add("deepPassTd", n(stats.passTd5p) * n(a.deepPassTd));
       add("sackTaken", n(stats.sacksTaken) * n(a.sackTaken));
+      add("incompletion", n(stats.incompletions) * n(a.incompletion));
       if (n(stats.dropbacks) > 0) {
         add("epaPerDropback", (n(stats.epaTotal) / n(stats.dropbacks)) * n(a.epaPerDropback));
       }

@@ -35,7 +35,10 @@ passing AS (
   SELECT passer_id AS gsis_id,
          SUM(passing_yards)     AS pass_yds,
          SUM(passing_touchdown) AS pass_td,
-         SUM(intercepted)       AS pass_int
+         SUM(intercepted)       AS pass_int,
+         -- incomplete attempts = attempts not caught (INTs, drops, throwaways, spikes)
+         SUM(CASE WHEN COALESCE(attempt, 0) = 1 AND COALESCE(reception, 0) = 0
+                  THEN 1 ELSE 0 END) AS incompletions
   FROM plays WHERE passer_id IS NOT NULL GROUP BY passer_id
 ),
 rushing AS (
@@ -233,6 +236,7 @@ SELECT
   COALESCE(aq.pass_td_5p,0)      AS pass_td_5p,
   COALESCE(aq.pass_fd_5p,0)      AS pass_fd_5p,
   COALESCE(aq.sacks_taken,0)     AS sacks_taken,
+  COALESCE(pa.incompletions,0)   AS incompletions,
   COALESCE(aq.dropbacks,0)       AS dropbacks,
   COALESCE(aq.epa_total,0)       AS epa_total,
   COALESCE(rt.routes,0)          AS routes,

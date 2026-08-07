@@ -31,7 +31,7 @@ _NOT_NULL_INT = [
     "accurate_throws", "catchable_throws", "to_worthy_throws", "hero_throws", "pass_air_yds",
     "hero_catches", "drops", "rec_air_yds", "rec_yac", "rec_yaco", "rec_fd", "first_read_targets",
     "mtf", "rush_mtf", "rec_mtf", "explosive_plays",
-    "pass_yds_5p", "pass_td_5p", "pass_fd_5p", "sacks_taken", "dropbacks",
+    "pass_yds_5p", "pass_td_5p", "pass_fd_5p", "sacks_taken", "incompletions", "dropbacks",
     "epa_total", "routes", "sep_total",
     "sep_m2", "sep_m1", "sep_p1", "sep_p2", "sep_p3", "sep_p4",
     "rush_stuffs", "rush_ybc", "rush_yaco",

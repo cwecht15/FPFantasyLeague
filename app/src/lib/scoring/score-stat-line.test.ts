@@ -165,6 +165,52 @@ describe("scoreStatLine — advanced charting + position scoping", () => {
     const viaRate = scoreStatLine(line, rules({ epaPerDropback: 10, epaTotal: 0 }), { position: "QB" });
     expect(viaRate.points).toBeCloseTo((8 / 40) * 10, 2); // 2
   });
+
+  it("explosive plays score RBs only by default — a WR/TE gets nothing", () => {
+    const line = { explosivePlays: 3 };
+    const r = rules({ explosivePlay: 2 });
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(6, 2);
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(0, 2);
+    expect(scoreStatLine(line, r, { position: "TE" }).points).toBeCloseTo(0, 2);
+  });
+
+  it("receiving first downs score WRs only by default — an RB/TE gets nothing", () => {
+    const line = { recFd: 5 };
+    const r = rules({ recFirstDown: 1 });
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(5, 2);
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(0, 2);
+    expect(scoreStatLine(line, r, { position: "TE" }).points).toBeCloseTo(0, 2);
+  });
+
+  it("rushing detail (stuff/YBC/YACO) scores RBs only by default — a QB scramble gets nothing", () => {
+    const line = { rushStuffs: 2, rushYbc: 40, rushYaco: 30 };
+    const r = rules({ rushStuff: -1, ybcYd: 0.05, yacoYd: 0.1 });
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(-2 + 2 + 3, 2);
+    expect(scoreStatLine(line, r, { position: "QB" }).points).toBeCloseTo(0, 2);
+  });
+
+  it("scope override re-points a stat — explosives moved to WR/TE", () => {
+    const line = { explosivePlays: 4 };
+    const r = rules({ explosivePlay: 2, scope: { explosivePlay: ["WR", "TE"] } });
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(8, 2);
+    expect(scoreStatLine(line, r, { position: "TE" }).points).toBeCloseTo(8, 2);
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(0, 2); // no longer RB
+  });
+
+  it("empty scope list turns a stat off entirely", () => {
+    const line = { recFd: 6 };
+    const r = rules({ recFirstDown: 1, scope: { recFirstDown: [] } });
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(0, 2);
+  });
+
+  it("incompletions penalize the QB only (attempts − completions)", () => {
+    const line = { incompletions: 18 };
+    const r = rules({ incompletion: -0.5 });
+    expect(scoreStatLine(line, r, { position: "QB" }).points).toBeCloseTo(-9, 2);
+    // a non-passer never carries incompletions, and the component is QB-scoped
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(0, 2);
+    expect(scoreStatLine(line, rules({}), { position: "QB" }).points).toBeCloseTo(0, 2); // default off
+  });
 });
 
 describe("scoreStatLine — expected fantasy points (xFP)", () => {

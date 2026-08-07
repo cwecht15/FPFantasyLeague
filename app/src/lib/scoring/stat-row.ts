@@ -47,6 +47,7 @@ export function statRowToLine(row: PlayerWeekStatsRow): RawStatLine {
     passTd5p: row.passTd5p,
     passFd5p: row.passFd5p,
     sacksTaken: row.sacksTaken,
+    incompletions: row.incompletions,
     dropbacks: row.dropbacks,
     epaTotal: row.epaTotal,
     routes: row.routes,

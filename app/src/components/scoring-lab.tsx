@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { runScoringLab, saveScoringSet, type LabState } from "@/lib/scoring/lab-actions";
-import type { LabFieldGroup } from "@/lib/scoring/lab-form";
+import { groupsFromRules, type LabFieldGroup, type ScopeState } from "@/lib/scoring/lab-form";
 import { RuleFieldsets } from "@/components/rules-fields";
 
 const initialState: LabState = { error: null };
@@ -117,13 +117,24 @@ const inputClass =
 export function ScoringLab({
   seasons,
   fieldGroups,
+  scope: initialScope,
   initialSetName = "",
 }: {
   seasons: number[];
   fieldGroups: LabFieldGroup[];
+  scope: ScopeState;
   initialSetName?: string;
 }) {
   const [state, formAction, pending] = useActionState(runScoringLab, initialState);
+
+  // React 19 resets uncontrolled form inputs once a form action completes, which
+  // would snap every rule box (and scope checkbox) back to its preset default
+  // after "Run scoring". Re-seed the defaults from the rules we just scored so
+  // the form keeps showing what the admin actually ran (the reset then lands on
+  // these values).
+  const derived = state.rulesUsed ? groupsFromRules(state.rulesUsed) : null;
+  const groups = derived?.groups ?? fieldGroups;
+  const scope = derived?.scope ?? initialScope;
 
   return (
     <div className="flex flex-col gap-4">
@@ -182,7 +193,7 @@ export function ScoringLab({
             <span className="t">Rules</span>
           </div>
           <div className="flex flex-col gap-5 px-[22px] py-4">
-            <RuleFieldsets groups={fieldGroups} />
+            <RuleFieldsets groups={groups} scope={scope} />
             <div className="flex flex-wrap items-center gap-3">
               <button type="submit" disabled={pending} className="btn pri self-start">
                 <span>{pending ? "Scoring…" : "Run scoring"}</span>

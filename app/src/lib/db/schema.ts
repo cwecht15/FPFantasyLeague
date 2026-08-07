@@ -562,6 +562,7 @@ export const playerWeekStats = pgTable(
     passTd5p: integer("pass_td_5p").notNull().default(0),
     passFd5p: integer("pass_fd_5p").notNull().default(0), // passing first downs, 5+ air yards
     sacksTaken: integer("sacks_taken").notNull().default(0),
+    incompletions: integer("incompletions").notNull().default(0), // pass attempts − completions
     dropbacks: integer("dropbacks").notNull().default(0),
     epaTotal: doublePrecision("epa_total").notNull().default(0), // EPA summed over dropbacks
     // route running

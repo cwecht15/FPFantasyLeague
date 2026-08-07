@@ -98,6 +98,10 @@ export interface AdvancedRules {
   sackTaken?: number; // per sack taken — typically negative
   epaPerDropback?: number; // points per unit of (weekly EPA / dropbacks) — e.g. ×10
   epaTotal?: number; // points per unit of TOTAL weekly EPA — e.g. ×2.5
+  incompletion?: number; // per incomplete pass attempt (att − completions) — typically negative
+  /** Per-family position eligibility for the configurable advanced stats
+   *  (ADVANCED_SCOPE_KEYS). Absent keys fall back to ADVANCED_SCOPE_DEFAULTS. */
+  scope?: AdvancedScope;
 }
 
 /** Expected-fantasy-points scoring: multiply a player's stored weekly xFP
@@ -112,15 +116,98 @@ export interface XfpRules {
 
 export const DEFAULT_XFP: XfpRules = { qb: 0, rb: 0, wr: 0, te: 0 };
 
-/** Advanced charting components whose underlying stat legitimately exists for
- *  more than one position, but which the house format restricts to a single
- *  slot: separation grades count for WRs only; missed tackles forced for RBs
- *  only. (scoreStatLine reads these.) */
-export const SEPARATION_POSITIONS = new Set(["WR"]);
-export const MTF_POSITIONS = new Set(["RB"]);
-/** Passing-production advanced components (5+ air-yard splits, sacks, EPA) only
- *  score the passer — keeps a receiver's gadget-play dropback (and its wildly
- *  inflated per-dropback EPA) from leaking onto skill-position totals. */
+/** The four scoreable offensive positions an advanced stat can be scoped to. */
+export type ScopePosition = "QB" | "RB" | "WR" | "TE";
+export const SCOPE_POSITIONS: ScopePosition[] = ["QB", "RB", "WR", "TE"];
+
+/** Advanced charting components whose underlying stat legitimately shows up for
+ *  more than one position, so *which* positions earn them is admin-configurable
+ *  (the Lab / settings scope matrix → `AdvancedRules.scope`). Each key here
+ *  bundles a family of rule fields that share one eligibility list:
+ *    mtf         → missedTackleForced + rushMtf + recMtf
+ *    separation  → sepPoint + sepM2..sepP4
+ *    rushDetail  → rushStuff + ybcYd + yacoYd
+ *  Everything else (basic passing-accuracy flags, the 5+ air-yard/EPA passing
+ *  block) is QB-only by the data and stays fixed (see PASSING_POSITIONS). */
+export type AdvancedScopeKey =
+  | "explosivePlay"
+  | "recFirstDown"
+  | "recFirstRead"
+  | "heroCatch"
+  | "drop"
+  | "recAirYd"
+  | "recYac"
+  | "recYaco"
+  | "mtf"
+  | "separation"
+  | "rushDetail";
+
+export const ADVANCED_SCOPE_KEYS: AdvancedScopeKey[] = [
+  "explosivePlay",
+  "recFirstDown",
+  "recFirstRead",
+  "heroCatch",
+  "drop",
+  "recAirYd",
+  "recYac",
+  "recYaco",
+  "mtf",
+  "separation",
+  "rushDetail",
+];
+
+/** House defaults, used whenever a rule set has no explicit scope for a key
+ *  (older saved sets, presets). RBs get explosives + rushing detail + MTF; WRs
+ *  get separation + receiving first downs; the rest of the receiving stats go
+ *  to every pass-catcher. */
+export const ADVANCED_SCOPE_DEFAULTS: Record<AdvancedScopeKey, ScopePosition[]> = {
+  explosivePlay: ["RB"],
+  recFirstDown: ["WR"],
+  recFirstRead: ["WR", "TE", "RB"],
+  heroCatch: ["WR", "TE", "RB"],
+  drop: ["WR", "TE", "RB"],
+  recAirYd: ["WR", "TE", "RB"],
+  recYac: ["WR", "TE", "RB"],
+  recYaco: ["WR", "TE", "RB"],
+  mtf: ["RB"],
+  separation: ["WR"],
+  rushDetail: ["RB"],
+};
+
+/** Labels for the scope-matrix UI. */
+export const ADVANCED_SCOPE_LABELS: Record<AdvancedScopeKey, string> = {
+  explosivePlay: "Explosive play (15+ yd)",
+  recFirstDown: "Receiving 1st down",
+  recFirstRead: "First-read target",
+  heroCatch: "Hero catch",
+  drop: "Drop",
+  recAirYd: "Rec air yards",
+  recYac: "YAC",
+  recYaco: "Rec YACO",
+  mtf: "Missed tackles forced",
+  separation: "Separation (per-route + grades)",
+  rushDetail: "Rushing detail (stuff / YBC / YACO)",
+};
+
+/** Does `pos` earn the given scopeable family under these rules? Falls back to
+ *  the house default scope when the rule set doesn't pin the key explicitly. */
+export function scopeHasPosition(
+  scope: AdvancedScope | undefined,
+  key: AdvancedScopeKey,
+  pos: string,
+): boolean {
+  const positions = scope?.[key] ?? ADVANCED_SCOPE_DEFAULTS[key];
+  return positions.includes(pos as ScopePosition);
+}
+
+/** Per-family position eligibility override. Loosely keyed by string so the Zod
+ *  validator and form parser stay simple; only ADVANCED_SCOPE_KEYS are read. */
+export type AdvancedScope = Record<string, ScopePosition[]>;
+
+/** Passing-production advanced components (accuracy flags, 5+ air-yard splits,
+ *  sacks, EPA, incompletions) only score the passer — keeps a receiver's
+ *  gadget-play dropback (and its wildly inflated per-dropback EPA) from leaking
+ *  onto skill-position totals. Not configurable: non-QBs have ~0 of these. */
 export const PASSING_POSITIONS = new Set(["QB"]);
 
 export const DEFAULT_ADVANCED: AdvancedRules = {
@@ -156,6 +243,8 @@ export const DEFAULT_ADVANCED: AdvancedRules = {
   sackTaken: 0,
   epaPerDropback: 0,
   epaTotal: 0,
+  incompletion: 0,
+  // scope omitted → ADVANCED_SCOPE_DEFAULTS apply (explosive→RB, Re1D→WR, …)
 };
 
 /** Team coaching staff (COACH roster slot) — scores the synthetic COACH-XX
@@ -297,7 +386,7 @@ export const SCORING_PRESETS: Record<ScoringPresetKey, ScoringRules> = {
     bonuses: [],
     advanced: {
       ...DEFAULT_ADVANCED,
-      missedTackleForced: 2, // RB-only (see MTF_POSITIONS)
+      missedTackleForced: 2, // RB-only (scope key "mtf" → ADVANCED_SCOPE_DEFAULTS)
       deepPassYd: 0.25,
       deepPassFirstDown: 0.5,
       deepPassTd: 4,
