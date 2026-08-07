@@ -80,6 +80,8 @@ export function statRowToLine(row: PlayerWeekStatsRow): RawStatLine {
     paDropbacks: u(row.paDropbacks),
     motionDropbacks: u(row.motionDropbacks),
     fourthDownAttempts: u(row.fourthDownAttempts),
+    run2ndLong: u(row.run2ndLong),
+    deep2ndShort: u(row.deep2ndShort),
     teamWin: u(row.teamWin),
     teamPointsScored: u(row.teamPointsScored),
     idpSoloTackles: u(row.idpSoloTackles),
