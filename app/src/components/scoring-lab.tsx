@@ -2,8 +2,15 @@
 
 import { useActionState, useState } from "react";
 import { runScoringLab, saveScoringSet, type LabState } from "@/lib/scoring/lab-actions";
-import { groupsFromRules, type LabFieldGroup, type ScopeState } from "@/lib/scoring/lab-form";
+import {
+  groupsFromRules,
+  rulesFromForm,
+  type LabFieldGroup,
+  type ScopeState,
+} from "@/lib/scoring/lab-form";
+import type { ScoringRules } from "@/lib/scoring/scoring-systems";
 import { RuleFieldsets } from "@/components/rules-fields";
+import { ScoringCardOverlay } from "@/components/scoring-card-overlay";
 
 const initialState: LabState = { error: null };
 
@@ -126,6 +133,9 @@ export function ScoringLab({
   initialSetName?: string;
 }) {
   const [state, formAction, pending] = useActionState(runScoringLab, initialState);
+  const [card, setCard] = useState<{ title: string; season: number; rules: ScoringRules } | null>(
+    null,
+  );
 
   // React 19 resets uncontrolled form inputs once a form action completes, which
   // would snap every rule box (and scope checkbox) back to its preset default
@@ -213,6 +223,23 @@ export function ScoringLab({
               >
                 <span>Zero out all</span>
               </button>
+              <button
+                type="button"
+                className="btn gho self-start"
+                title="Show the current rule set as a shareable card — screenshot, copy as text, or print"
+                onClick={(e) => {
+                  const form = e.currentTarget.closest("form");
+                  if (!form) return;
+                  const fd = new FormData(form);
+                  setCard({
+                    title: String(fd.get("setName") ?? "").trim() || "Scoring Lab",
+                    season: Number(fd.get("season")) || 0,
+                    rules: rulesFromForm(fd),
+                  });
+                }}
+              >
+                <span>Scoring card</span>
+              </button>
               <span className="note">Nothing is written — pure what-if on posted stat lines.</span>
               {state.error && <span className="text-sm text-flame">{state.error}</span>}
               <span className="ml-auto flex items-center gap-2">
@@ -234,6 +261,16 @@ export function ScoringLab({
       </form>
 
       {state.rows && <LabLeaderboard rows={state.rows} scope={state.scope} limit={state.limit} />}
+
+      {card && (
+        <ScoringCardOverlay
+          title={card.title}
+          meta={`Lab preview · Season ${card.season || "—"}`}
+          season={card.season}
+          rules={card.rules}
+          onClose={() => setCard(null)}
+        />
+      )}
     </div>
   );
 }
