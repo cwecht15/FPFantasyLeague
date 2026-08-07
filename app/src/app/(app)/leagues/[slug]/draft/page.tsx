@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { players, teams } from "@/lib/db/schema";
-import { getLeagueForUser } from "@/lib/leagues/service";
+import { players, rosterEntries, teams } from "@/lib/db/schema";
+import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
+import { ACTIVE_POSITIONS } from "@/lib/leagues/settings";
 import { getDraft, getDraftBoard, listAvailable } from "@/lib/draft/service";
 import { listMyQueue, pauseDraftAction, startDraftAction } from "@/lib/draft/actions";
 import { ActionForm } from "@/components/action-form";
@@ -15,15 +16,20 @@ import { fmt1 } from "@/lib/format";
 
 const POSITIONS = ["ALL", "QB", "RB", "WR", "TE", "COACH"];
 
+/** Per-position cap in the grouped "ALL" view, so one deep position can't
+ *  crowd out the others. A specific position filter shows a full list. */
+const PER_POSITION = 12;
+
 export default async function DraftPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ q?: string; pos?: string }>;
+  searchParams: Promise<{ q?: string; pos?: string; sort?: string }>;
 }) {
   const { slug } = await params;
-  const { q = "", pos = "ALL" } = await searchParams;
+  const { q = "", pos = "ALL", sort: sortParam } = await searchParams;
+  const sort = sortParam === "ppg" ? "ppg" : "pts";
   const session = await auth();
   if (!session?.user) redirect("/login");
   const ctx = await getLeagueForUser(slug, session.user.id);
@@ -99,8 +105,54 @@ export default async function DraftPage({
 
   const available =
     draft.status === "in_progress" || draft.status === "paused"
-      ? await listAvailable(ctx.league.id, ctx.league.season, { q, pos, limit: 60 })
+      ? await listAvailable(ctx.league.id, ctx.league.season, {
+          q,
+          pos,
+          sort,
+          limit: pos === "ALL" ? 200 : 80,
+        })
       : [];
+
+  // Group by position for the "ALL" view; a single-position filter is one group.
+  const groups: { position: string; players: typeof available }[] =
+    pos === "ALL"
+      ? POSITIONS.filter((p) => p !== "ALL")
+          .map((p) => ({
+            position: p,
+            players: available.filter((a) => a.position === p).slice(0, PER_POSITION),
+          }))
+          .filter((g) => g.players.length > 0)
+      : [{ position: pos, players: available }];
+
+  // My roster so far, in draft order, for the side panel.
+  const myRoster = ctx.myTeam
+    ? await db
+        .select({
+          gsisId: rosterEntries.gsisId,
+          name: players.displayName,
+          position: players.position,
+          nflTeam: players.nflTeam,
+        })
+        .from(rosterEntries)
+        .innerJoin(players, eq(players.gsisId, rosterEntries.gsisId))
+        .where(
+          and(eq(rosterEntries.teamId, ctx.myTeam.id), isNull(rosterEntries.droppedAt)),
+        )
+        .orderBy(rosterEntries.id)
+    : [];
+  const rosterByPos = new Map<string, typeof myRoster>();
+  for (const r of myRoster) {
+    rosterByPos.set(r.position, [...(rosterByPos.get(r.position) ?? []), r]);
+  }
+  // Starter requirement per position (FLEX/BENCH aren't position-specific) and
+  // the total roster size, both from the league's template.
+  const settings = await getSettings(ctx.league.id);
+  const starterNeeds = new Map<string, number>(
+    settings.rosterTemplate.slots
+      .filter((s) => (ACTIVE_POSITIONS as readonly string[]).includes(s.slot))
+      .map((s) => [s.slot, s.count]),
+  );
+  const rosterSize = settings.rosterTemplate.slots.reduce((n, s) => n + s.count, 0);
 
   const myQueue = ctx.myTeam ? await listMyQueue(ctx.league.id, ctx.myTeam.id) : [];
   const recent = board
@@ -191,11 +243,12 @@ export default async function DraftPage({
                     style={{ padding: "5px 10px", fontSize: 13, width: 150 }}
                   />
                   <input type="hidden" name="pos" value={pos} />
+                  <input type="hidden" name="sort" value={sort} />
                 </form>
                 {POSITIONS.map((p) => (
                   <Link
                     key={p}
-                    href={`/leagues/${slug}/draft?q=${encodeURIComponent(q)}&pos=${p}`}
+                    href={`/leagues/${slug}/draft?q=${encodeURIComponent(q)}&pos=${p}&sort=${sort}`}
                     className={`pill ${p === pos ? "on" : ""}`}
                     style={{ padding: "3px 9px", fontSize: 11 }}
                   >
@@ -207,34 +260,121 @@ export default async function DraftPage({
             <table className="tbl">
               <thead>
                 <tr>
+                  <th style={{ width: 44 }}>#</th>
                   <th>Player</th>
-                  <th>Pos</th>
                   <th>NFL</th>
-                  <th className="r" title="What the player scored last season under this league's scoring rules">
-                    {ctx.league.season - 1} pts
+                  <th className="r" title={`Games played in ${ctx.league.season - 1}`}>
+                    G
+                  </th>
+                  <th className="r">
+                    <Link
+                      href={`/leagues/${slug}/draft?q=${encodeURIComponent(q)}&pos=${pos}&sort=pts`}
+                      className={sort === "pts" ? "text-flame" : ""}
+                      title={`${ctx.league.season - 1} total points under this league's scoring — click to sort`}
+                    >
+                      FPTS{sort === "pts" ? " ▼" : ""}
+                    </Link>
+                  </th>
+                  <th className="r">
+                    <Link
+                      href={`/leagues/${slug}/draft?q=${encodeURIComponent(q)}&pos=${pos}&sort=ppg`}
+                      className={sort === "ppg" ? "text-flame" : ""}
+                      title={`${ctx.league.season - 1} points per game — click to sort`}
+                    >
+                      FPTS/G{sort === "ppg" ? " ▼" : ""}
+                    </Link>
                   </th>
                   <th></th>
                 </tr>
               </thead>
-              <tbody>
-                {available.map((p) => (
-                  <tr key={p.gsisId} className="hov">
-                    <td className="tm">{p.name}</td>
-                    <td>
-                      <span className={`pos ${p.position}`}>{p.position}</span>
-                    </td>
-                    <td className="dim">{p.nflTeam}</td>
-                    <td className="r num">{p.lastSeasonPts !== null ? fmt1(p.lastSeasonPts) : "—"}</td>
-                    <td className="r">
-                      <PickButton slug={slug} gsisId={p.gsisId} canPick={canPickNow} />
+              {groups.map((g) => (
+                <tbody key={g.position}>
+                  <tr>
+                    <td colSpan={7} className="bg-surface !py-1.5">
+                      <span className="label !text-paper">{g.position}</span>
+                      <span className="ml-2 text-[11px] text-faint">
+                        {g.players.length} shown
+                        {pos === "ALL" && g.players.length === PER_POSITION && (
+                          <>
+                            {" · "}
+                            <Link
+                              href={`/leagues/${slug}/draft?q=${encodeURIComponent(q)}&pos=${g.position}&sort=${sort}`}
+                              className="underline"
+                            >
+                              see all
+                            </Link>
+                          </>
+                        )}
+                      </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                  {g.players.map((p) => (
+                    <tr key={p.gsisId} className="hov">
+                      <td className="rk">
+                        {p.position}
+                        {p.posRank}
+                      </td>
+                      <td className="tm">{p.name}</td>
+                      <td className="dim">{p.nflTeam}</td>
+                      <td className="r num dim">{p.games || "—"}</td>
+                      <td className="r num">
+                        {p.lastSeasonPts !== null ? fmt1(p.lastSeasonPts) : "—"}
+                      </td>
+                      <td className="r num" style={{ fontWeight: 800 }}>
+                        {p.ppg !== null ? fmt1(p.ppg) : "—"}
+                      </td>
+                      <td className="r">
+                        <PickButton slug={slug} gsisId={p.gsisId} canPick={canPickNow} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
             </table>
+            {groups.length === 0 && <p className="empty">No players match.</p>}
           </div>
 
           <div className="flex flex-col gap-4">
+            {ctx.myTeam && (
+              <div className="panel">
+                <div className="ptitle">
+                  <span className="t">My roster</span>
+                  <span className="m">
+                    {myRoster.length} / {rosterSize}
+                  </span>
+                </div>
+                <table className="tbl">
+                  <tbody>
+                    {ACTIVE_POSITIONS.map((slotPos) => {
+                      const picked = rosterByPos.get(slotPos) ?? [];
+                      const need = starterNeeds.get(slotPos) ?? 0;
+                      const short = picked.length < need;
+                      return (
+                        <tr key={slotPos}>
+                          <td style={{ width: 52 }}>
+                            <span className={`pos ${slotPos}`}>{slotPos}</span>
+                          </td>
+                          <td>
+                            {picked.length === 0 ? (
+                              <span className="text-faint">—</span>
+                            ) : (
+                              picked.map((r) => r.name).join(", ")
+                            )}
+                          </td>
+                          <td className="r num" style={short ? { color: "var(--color-flame)" } : undefined}>
+                            {picked.length}/{need}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="note px-[22px] py-2">
+                  Counts are starters needed (FLEX and bench fill from anywhere).
+                </p>
+              </div>
+            )}
+
             <div className="panel">
               <div className="ptitle">
                 <span className="t">My queue</span>

@@ -317,17 +317,23 @@ export async function makePick(opts: {
 // Prior-season points under a rule set (draft rankings)
 // ---------------------------------------------------------------------------
 
-/** Season-total fantasy points per player under `rules`, cached ~10 min —
- *  the draft room polls every 12s and re-scoring a full season's stat lines
- *  (~7k rows) on every refresh would be wasteful. Keyed by season + the rules
- *  JSON, so a scoring change naturally invalidates. */
-const seasonPtsCache = new Map<string, { at: number; map: Map<string, number> }>();
+/** Prior-season production per player under `rules`: total points and games
+ *  played (weeks with a stat line). Cached ~10 min — the draft room polls every
+ *  12s and re-scoring a full season's stat lines (~7k rows) on every refresh
+ *  would be wasteful. Keyed by season + the rules JSON, so a scoring change
+ *  naturally invalidates. */
+export interface SeasonLine {
+  points: number;
+  games: number;
+}
+
+const seasonPtsCache = new Map<string, { at: number; map: Map<string, SeasonLine> }>();
 const SEASON_PTS_TTL_MS = 10 * 60 * 1000;
 
 export async function seasonPointsByPlayer(
   season: number,
   rules: ScoringRules,
-): Promise<Map<string, number>> {
+): Promise<Map<string, SeasonLine>> {
   const key = `${season}:${JSON.stringify(rules)}`;
   const hit = seasonPtsCache.get(key);
   if (hit && Date.now() - hit.at < SEASON_PTS_TTL_MS) return hit.map;
@@ -337,13 +343,16 @@ export async function seasonPointsByPlayer(
     .from(playerWeekStats)
     .innerJoin(players, eq(playerWeekStats.gsisId, players.gsisId))
     .where(and(eq(playerWeekStats.season, season), eq(playerWeekStats.seasonType, "REG")));
-  const map = new Map<string, number>();
+  const map = new Map<string, SeasonLine>();
   for (const r of rows) {
     const { points } = scoreStatLine(statRowToLine(r.stat), rules, {
       isTightEnd: r.position === "TE",
       position: r.position,
     });
-    map.set(r.stat.gsisId, (map.get(r.stat.gsisId) ?? 0) + points);
+    const cur = map.get(r.stat.gsisId) ?? { points: 0, games: 0 };
+    cur.points += points;
+    cur.games += 1;
+    map.set(r.stat.gsisId, cur);
   }
   seasonPtsCache.set(key, { at: Date.now(), map });
   return map;
@@ -409,7 +418,7 @@ export async function chooseAutopick(
   let best: string | null = null;
   let bestPts = -Infinity;
   for (const r of rows) {
-    const v = pts.get(r.gsis_id) ?? -Infinity;
+    const v = pts.get(r.gsis_id)?.points ?? -Infinity;
     if (v > bestPts) {
       best = r.gsis_id;
       bestPts = v;
@@ -463,27 +472,26 @@ export interface AvailablePlayer {
   name: string;
   position: string;
   nflTeam: string | null;
+  /** Prior-season total under the league's rules (null = no stat lines). */
   lastSeasonPts: number | null;
+  /** Prior-season games played (weeks with a stat line). */
+  games: number;
+  /** Prior-season points per game. */
+  ppg: number | null;
+  /** Rank at this position among everyone still available, by the active sort. */
+  posRank: number;
 }
 
-/** Undrafted/unrostered offensive players, ranked by what they would have
- *  scored last season under this league's own scoring rules. */
+/** Undrafted/unrostered offensive players with their prior-season production
+ *  under this league's own scoring rules. Ranked by season total (default) or
+ *  per-game; position ranks are computed over the whole available pool so they
+ *  stay meaningful while searching/filtering. */
 export async function listAvailable(
   leagueId: number,
   season: number,
-  opts: { q?: string; pos?: string; limit?: number } = {},
+  opts: { q?: string; pos?: string; limit?: number; sort?: "pts" | "ppg" } = {},
 ): Promise<AvailablePlayer[]> {
   const limit = Math.min(opts.limit ?? 50, 200);
-  const params: unknown[] = [leagueId];
-  let filter = "";
-  if (opts.pos && opts.pos !== "ALL") {
-    params.push(opts.pos);
-    filter += ` AND p.position = $${params.length}`;
-  }
-  if (opts.q?.trim()) {
-    params.push(`%${opts.q.trim()}%`);
-    filter += ` AND p.display_name ILIKE $${params.length}`;
-  }
   const { rows } = await pool.query(
     `SELECT p.gsis_id, p.display_name, p.position, p.nfl_team
        FROM players p
@@ -491,25 +499,48 @@ export async function listAvailable(
         AND NOT EXISTS (
           SELECT 1 FROM roster_entries r
            WHERE r.league_id = $1 AND r.gsis_id = p.gsis_id AND r.dropped_at IS NULL
-        )${filter}`,
-    params,
+        )`,
+    [leagueId],
   );
 
   const rules = await leagueScoringRules(leagueId);
-  const pts = rules ? await seasonPointsByPlayer(season - 1, rules) : new Map<string, number>();
+  const pts = rules
+    ? await seasonPointsByPlayer(season - 1, rules)
+    : new Map<string, SeasonLine>();
 
-  return rows
-    .map((r) => {
-      const p = pts.get(r.gsis_id);
-      return {
-        gsisId: r.gsis_id,
-        name: r.display_name,
-        position: r.position,
-        nflTeam: r.nfl_team,
-        lastSeasonPts: p === undefined ? null : Math.round(p * 10) / 10,
-      };
-    })
-    .sort((a, b) => (b.lastSeasonPts ?? -Infinity) - (a.lastSeasonPts ?? -Infinity))
+  const all = rows.map((r) => {
+    const line = pts.get(r.gsis_id);
+    return {
+      gsisId: r.gsis_id as string,
+      name: r.display_name as string,
+      position: r.position as string,
+      nflTeam: r.nfl_team as string | null,
+      lastSeasonPts: line ? Math.round(line.points * 10) / 10 : null,
+      games: line?.games ?? 0,
+      ppg: line && line.games > 0 ? Math.round((line.points / line.games) * 10) / 10 : null,
+      posRank: 0,
+    };
+  });
+
+  const key = (p: AvailablePlayer) =>
+    (opts.sort === "ppg" ? p.ppg : p.lastSeasonPts) ?? -Infinity;
+  all.sort((a, b) => key(b) - key(a));
+
+  // Position ranks over the full available pool, before search/limit.
+  const seen = new Map<string, number>();
+  for (const p of all) {
+    const rank = (seen.get(p.position) ?? 0) + 1;
+    seen.set(p.position, rank);
+    p.posRank = rank;
+  }
+
+  const q = opts.q?.trim().toLowerCase();
+  return all
+    .filter(
+      (p) =>
+        (!opts.pos || opts.pos === "ALL" || p.position === opts.pos) &&
+        (!q || p.name.toLowerCase().includes(q)),
+    )
     .slice(0, limit);
 }
 

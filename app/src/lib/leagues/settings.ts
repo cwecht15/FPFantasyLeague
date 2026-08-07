@@ -67,6 +67,8 @@ export type RosterTemplate = z.infer<typeof rosterTemplateSchema>;
 
 // Platform rule: no kickers, no defenses — offense-only rosters, plus the
 // team coaching-staff slot (scheme usage + team results).
+// House roster (owner spec): QB / RB / RB / WR / WR / TE / FLEX / COACH,
+// plus 4 bench. 8 starters, 12 total, no IR.
 export const DEFAULT_ROSTER_TEMPLATE: RosterTemplate = {
   slots: [
     { slot: "QB", count: 1 },
@@ -75,8 +77,7 @@ export const DEFAULT_ROSTER_TEMPLATE: RosterTemplate = {
     { slot: "TE", count: 1 },
     { slot: "FLEX", count: 1 },
     { slot: "COACH", count: 1 },
-    { slot: "BENCH", count: 6 },
-    { slot: "IR", count: 1 },
+    { slot: "BENCH", count: 4 },
   ],
 };
 
