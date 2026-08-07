@@ -210,7 +210,9 @@ export default async function DraftPage({
                   <th>Player</th>
                   <th>Pos</th>
                   <th>NFL</th>
-                  <th className="r">Last szn</th>
+                  <th className="r" title="What the player scored last season under this league's scoring rules">
+                    {ctx.league.season - 1} pts
+                  </th>
                   <th></th>
                 </tr>
               </thead>

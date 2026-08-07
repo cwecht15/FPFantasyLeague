@@ -114,6 +114,18 @@ describe("scoreStatLine — advanced charting + position scoping", () => {
     expect(points).toBeCloseTo(29, 2);
   });
 
+  it("explosive splits: rush (10+) and rec (15+) at their own rates, combined off", () => {
+    const line = { rushExplosives: 5, recExplosives: 2, explosivePlays: 4 };
+    const r = rules({ rushExplosive: 1, recExplosive: 2, explosivePlay: 0 });
+    // RB earns the explosive family by default scope: 5*1 + 2*2 = 9
+    expect(scoreStatLine(line, r, { position: "RB" }).points).toBeCloseTo(9, 2);
+    // WR is outside the default explosive scope — nothing
+    expect(scoreStatLine(line, r, { position: "WR" }).points).toBeCloseTo(0, 2);
+    // combined rate still works alone (splits off)
+    const c = rules({ explosivePlay: 6 });
+    expect(scoreStatLine(line, c, { position: "RB" }).points).toBeCloseTo(24, 2);
+  });
+
   it("WR separation grades score per route at each grade, plus rec first downs", () => {
     const line = { sepP1: 4, sepP2: 2, sepM1: 3, sepM2: 1, recFd: 5 };
     const { points } = scoreStatLine(line, rules({

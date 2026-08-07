@@ -16,11 +16,17 @@ import {
   draftQueue,
   drafts,
   leagues,
+  leagueSettings,
+  players,
+  playerWeekStats,
   rosterEntries,
   teams,
   transactions,
 } from "@/lib/db/schema";
 import type { DraftConfig } from "@/lib/leagues/settings";
+import { scoreStatLine } from "@/lib/scoring/score-stat-line";
+import { statRowToLine } from "@/lib/scoring/stat-row";
+import type { ScoringRules } from "@/lib/scoring/scoring-systems";
 
 export type Draft = typeof drafts.$inferSelect;
 export type DraftPick = typeof draftPicks.$inferSelect;
@@ -308,10 +314,56 @@ export async function makePick(opts: {
 }
 
 // ---------------------------------------------------------------------------
+// Prior-season points under a rule set (draft rankings)
+// ---------------------------------------------------------------------------
+
+/** Season-total fantasy points per player under `rules`, cached ~10 min —
+ *  the draft room polls every 12s and re-scoring a full season's stat lines
+ *  (~7k rows) on every refresh would be wasteful. Keyed by season + the rules
+ *  JSON, so a scoring change naturally invalidates. */
+const seasonPtsCache = new Map<string, { at: number; map: Map<string, number> }>();
+const SEASON_PTS_TTL_MS = 10 * 60 * 1000;
+
+export async function seasonPointsByPlayer(
+  season: number,
+  rules: ScoringRules,
+): Promise<Map<string, number>> {
+  const key = `${season}:${JSON.stringify(rules)}`;
+  const hit = seasonPtsCache.get(key);
+  if (hit && Date.now() - hit.at < SEASON_PTS_TTL_MS) return hit.map;
+
+  const rows = await db
+    .select({ stat: playerWeekStats, position: players.position })
+    .from(playerWeekStats)
+    .innerJoin(players, eq(playerWeekStats.gsisId, players.gsisId))
+    .where(and(eq(playerWeekStats.season, season), eq(playerWeekStats.seasonType, "REG")));
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const { points } = scoreStatLine(statRowToLine(r.stat), rules, {
+      isTightEnd: r.position === "TE",
+      position: r.position,
+    });
+    map.set(r.stat.gsisId, (map.get(r.stat.gsisId) ?? 0) + points);
+  }
+  seasonPtsCache.set(key, { at: Date.now(), map });
+  return map;
+}
+
+async function leagueScoringRules(leagueId: number): Promise<ScoringRules | null> {
+  const [row] = await db
+    .select({ scoringRules: leagueSettings.scoringRules })
+    .from(leagueSettings)
+    .where(eq(leagueSettings.leagueId, leagueId))
+    .limit(1);
+  return row?.scoringRules ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Autopick (worker)
 // ---------------------------------------------------------------------------
 
-/** Best available: queue first (rank order), else last-season production. */
+/** Best available: queue first (rank order), else last-season production
+ *  under the league's own scoring rules. */
 export async function chooseAutopick(
   draftId: number,
   leagueId: number,
@@ -339,28 +391,31 @@ export async function chooseAutopick(
     if (!taken) return q.gsisId;
   }
 
-  // 2) best available by last season's raw production (offense only).
+  // 2) best available by last season's production under the league's rules.
   const { rows } = await pool.query(
     `SELECT p.gsis_id
        FROM players p
-       LEFT JOIN (
-         SELECT gsis_id,
-                SUM(pass_yds / 25.0 + pass_td * 4 + rush_yds / 10.0 + rush_td * 6
-                    + receptions + rec_yds / 10.0 + rec_td * 6 - pass_int - fumbles_lost) AS pts
-           FROM player_week_stats
-          WHERE season = $2 AND season_type = 'REG'
-          GROUP BY gsis_id
-       ) s ON s.gsis_id = p.gsis_id
       WHERE p.position IN ('QB','RB','WR','TE','COACH')
         AND NOT EXISTS (
           SELECT 1 FROM roster_entries r
            WHERE r.league_id = $1 AND r.gsis_id = p.gsis_id AND r.dropped_at IS NULL
-        )
-      ORDER BY s.pts DESC NULLS LAST
-      LIMIT 1`,
-    [leagueId, season - 1],
+        )`,
+    [leagueId],
   );
-  return rows[0]?.gsis_id ?? null;
+  if (rows.length === 0) return null;
+  const rules = await leagueScoringRules(leagueId);
+  if (!rules) return rows[0].gsis_id;
+  const pts = await seasonPointsByPlayer(season - 1, rules);
+  let best: string | null = null;
+  let bestPts = -Infinity;
+  for (const r of rows) {
+    const v = pts.get(r.gsis_id) ?? -Infinity;
+    if (v > bestPts) {
+      best = r.gsis_id;
+      bestPts = v;
+    }
+  }
+  return best ?? rows[0].gsis_id;
 }
 
 /** Worker scan: autopick every expired current pick. Returns picks made. */
@@ -411,14 +466,15 @@ export interface AvailablePlayer {
   lastSeasonPts: number | null;
 }
 
-/** Undrafted/unrostered offensive players, ranked by last-season production. */
+/** Undrafted/unrostered offensive players, ranked by what they would have
+ *  scored last season under this league's own scoring rules. */
 export async function listAvailable(
   leagueId: number,
   season: number,
   opts: { q?: string; pos?: string; limit?: number } = {},
 ): Promise<AvailablePlayer[]> {
   const limit = Math.min(opts.limit ?? 50, 200);
-  const params: unknown[] = [leagueId, season - 1];
+  const params: unknown[] = [leagueId];
   let filter = "";
   if (opts.pos && opts.pos !== "ALL") {
     params.push(opts.pos);
@@ -428,34 +484,33 @@ export async function listAvailable(
     params.push(`%${opts.q.trim()}%`);
     filter += ` AND p.display_name ILIKE $${params.length}`;
   }
-  params.push(limit);
   const { rows } = await pool.query(
-    `SELECT p.gsis_id, p.display_name, p.position, p.nfl_team, ROUND(s.pts::numeric, 1) AS pts
+    `SELECT p.gsis_id, p.display_name, p.position, p.nfl_team
        FROM players p
-       LEFT JOIN (
-         SELECT gsis_id,
-                SUM(pass_yds / 25.0 + pass_td * 4 + rush_yds / 10.0 + rush_td * 6
-                    + receptions + rec_yds / 10.0 + rec_td * 6 - pass_int - fumbles_lost) AS pts
-           FROM player_week_stats
-          WHERE season = $2 AND season_type = 'REG'
-          GROUP BY gsis_id
-       ) s ON s.gsis_id = p.gsis_id
       WHERE p.position IN ('QB','RB','WR','TE','COACH')
         AND NOT EXISTS (
           SELECT 1 FROM roster_entries r
            WHERE r.league_id = $1 AND r.gsis_id = p.gsis_id AND r.dropped_at IS NULL
-        )${filter}
-      ORDER BY s.pts DESC NULLS LAST
-      LIMIT $${params.length}`,
+        )${filter}`,
     params,
   );
-  return rows.map((r) => ({
-    gsisId: r.gsis_id,
-    name: r.display_name,
-    position: r.position,
-    nflTeam: r.nfl_team,
-    lastSeasonPts: r.pts === null ? null : Number(r.pts),
-  }));
+
+  const rules = await leagueScoringRules(leagueId);
+  const pts = rules ? await seasonPointsByPlayer(season - 1, rules) : new Map<string, number>();
+
+  return rows
+    .map((r) => {
+      const p = pts.get(r.gsis_id);
+      return {
+        gsisId: r.gsis_id,
+        name: r.display_name,
+        position: r.position,
+        nflTeam: r.nfl_team,
+        lastSeasonPts: p === undefined ? null : Math.round(p * 10) / 10,
+      };
+    })
+    .sort((a, b) => (b.lastSeasonPts ?? -Infinity) - (a.lastSeasonPts ?? -Infinity))
+    .slice(0, limit);
 }
 
 export async function getDraft(leagueId: number): Promise<Draft | null> {

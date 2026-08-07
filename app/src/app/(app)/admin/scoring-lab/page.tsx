@@ -124,7 +124,7 @@ export default async function ScoringLabPage({
             ["Rec YACO", "Receiving yards after contact — the after-contact share of YAC on each reception."],
             ["Receiving first down", "A reception that converted a first down."],
             ["First-read target", "A target where the charted progression read was the QB's first — i.e. the receiver was the primary read on the play. Credited to the targeted receiver."],
-            ["Explosive play", "A rush or reception of 15 or more yards."],
+            ["Explosive play", "Combined: a rush or reception of 15+ yards. Or score the splits at their own thresholds — explosive rush (10+ yards) and explosive reception (15+ yards) — leaving the combined value at 0."],
             ["Expected fantasy points (xFP)", "PPR-style expected production from charted opportunities (expected catches, receiving/rushing yards, and TDs), summed per player-week — scored by a per-position multiplier (e.g. TE × 1.25)."],
             ["Separation (per route)", "Every route the player runs is graded −2 (pressed) to +4 (coverage bust); the weekly value is the sum across all routes, not just targets. Scores WRs only."],
             ["Separation grades", "The same per-route grades scored individually — e.g. +5 for every +1 (step) route, −10 for every −2 (pressed) route — instead of the linear per-point sum."],

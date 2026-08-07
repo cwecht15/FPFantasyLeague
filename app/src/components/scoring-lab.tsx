@@ -8,9 +8,16 @@ import {
   type LabFieldGroup,
   type ScopeState,
 } from "@/lib/scoring/lab-form";
-import type { ScoringRules } from "@/lib/scoring/scoring-systems";
+import {
+  SCOPE_POSITIONS,
+  SCORING_PRESETS,
+  SCORING_PRESET_OPTIONS,
+  type ScoringPresetKey,
+  type ScoringRules,
+} from "@/lib/scoring/scoring-systems";
 import { RuleFieldsets } from "@/components/rules-fields";
 import { ScoringCardOverlay } from "@/components/scoring-card-overlay";
+import { fireToast } from "@/components/toast";
 
 const initialState: LabState = { error: null };
 
@@ -253,6 +260,47 @@ export function ScoringLab({
         <div className="panel">
           <div className="ptitle">
             <span className="t">Rules</span>
+            <label className="m flex items-center gap-2 normal-case">
+              Load preset
+              <select
+                defaultValue=""
+                className={inputClass}
+                style={{ padding: "4px 8px", fontSize: 13 }}
+                onChange={(e) => {
+                  const key = e.currentTarget.value as ScoringPresetKey;
+                  const form = e.currentTarget.closest("form");
+                  if (!key || !form) return;
+                  // Fill every rule input and scope checkbox from the preset —
+                  // client-side only, like Zero out all; nothing runs or saves.
+                  const { groups: pg, scope: ps } = groupsFromRules(SCORING_PRESETS[key]);
+                  for (const g of pg) {
+                    for (const f of g.fields) {
+                      const input = form.querySelector<HTMLInputElement>(`input[name="${f.name}"]`);
+                      if (input) input.value = String(f.default);
+                    }
+                  }
+                  for (const [k, positions] of Object.entries(ps)) {
+                    for (const p of SCOPE_POSITIONS) {
+                      const cb = form.querySelector<HTMLInputElement>(
+                        `input[name="scope_${k}_${p}"]`,
+                      );
+                      if (cb) cb.checked = positions.includes(p);
+                    }
+                  }
+                  fireToast(
+                    `${SCORING_PRESET_OPTIONS.find((o) => o.key === key)?.label ?? key} loaded — run scoring to apply`,
+                  );
+                  e.currentTarget.value = "";
+                }}
+              >
+                <option value="">Scoring system…</option>
+                {SCORING_PRESET_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <div className="flex flex-col gap-5 px-[22px] py-4">
             <RuleFieldsets groups={groups} scope={scope} />

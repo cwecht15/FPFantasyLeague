@@ -85,6 +85,13 @@
       "when": 1781957030915,
       "tag": "0011_condemned_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786127387634,
+      "tag": "0012_tan_gideon",
+      "breakpoints": true
     }
   ]
 }

@@ -78,7 +78,9 @@ export interface AdvancedRules {
   recYacYd: number; // per yard after catch
   recYacoYd?: number; // per receiving yard after contact
   recFirstDown?: number; // per receiving first down
-  explosivePlay?: number; // per 15+ yard rush or reception
+  explosivePlay?: number; // per 15+ yard rush or reception (combined — use the splits below OR this, not both)
+  rushExplosive?: number; // per 10+ yard rush (split with its own threshold)
+  recExplosive?: number; // per 15+ yard reception
   sepPoint: number; // per separation point accumulated across routes (-2..+4 each)
   sepM2?: number; // per route graded -2 (pressed at line) — typically negative
   sepM1?: number; // per route graded -1 (tight) — typically negative
@@ -176,7 +178,7 @@ export const ADVANCED_SCOPE_DEFAULTS: Record<AdvancedScopeKey, ScopePosition[]> 
 
 /** Labels for the scope-matrix UI. */
 export const ADVANCED_SCOPE_LABELS: Record<AdvancedScopeKey, string> = {
-  explosivePlay: "Explosive play (15+ yd)",
+  explosivePlay: "Explosive plays (combined / rush 10+ / rec 15+)",
   recFirstDown: "Receiving 1st down",
   recFirstRead: "First-read target",
   heroCatch: "Hero catch",
@@ -226,6 +228,8 @@ export const DEFAULT_ADVANCED: AdvancedRules = {
   recYacoYd: 0,
   recFirstDown: 0,
   explosivePlay: 0,
+  rushExplosive: 0,
+  recExplosive: 0,
   sepPoint: 0,
   sepM2: 0,
   sepM1: 0,

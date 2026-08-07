@@ -237,6 +237,8 @@ export const scoringRulesSchema: z.ZodType<ScoringRules> = z.object({
       recYacoYd: z.number().optional(),
       recFirstDown: z.number().optional(),
       explosivePlay: z.number().optional(),
+      rushExplosive: z.number().optional(),
+      recExplosive: z.number().optional(),
       sepPoint: z.number(),
       sepM2: z.number().optional(),
       sepM1: z.number().optional(),

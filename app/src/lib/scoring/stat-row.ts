@@ -42,6 +42,8 @@ export function statRowToLine(row: PlayerWeekStatsRow): RawStatLine {
     rushMtf: row.rushMtf,
     recMtf: row.recMtf,
     explosivePlays: row.explosivePlays,
+    rushExplosives: row.rushExplosives,
+    recExplosives: row.recExplosives,
     xfp: row.xfp,
     passYds5p: row.passYds5p,
     passTd5p: row.passTd5p,

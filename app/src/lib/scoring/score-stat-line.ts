@@ -41,6 +41,8 @@ export interface RawStatLine {
   rushMtf?: number;
   recMtf?: number;
   explosivePlays?: number;
+  rushExplosives?: number;
+  recExplosives?: number;
   xfp?: number;
   passYds5p?: number;
   passTd5p?: number;
@@ -218,7 +220,11 @@ export function scoreStatLine(
     if (has("recYaco")) add("recYaco", n(stats.recYaco) * n(a.recYacoYd));
     if (has("recFirstDown")) add("recFirstDown", n(stats.recFd) * n(a.recFirstDown));
     if (has("recFirstRead")) add("recFirstRead", n(stats.firstReadTargets) * n(a.recFirstRead));
-    if (has("explosivePlay")) add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
+    if (has("explosivePlay")) {
+      add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
+      add("rushExplosive", n(stats.rushExplosives) * n(a.rushExplosive));
+      add("recExplosive", n(stats.recExplosives) * n(a.recExplosive));
+    }
     if (has("separation")) {
       add("separation", n(stats.sepTotal) * a.sepPoint);
       add("sepM2", n(stats.sepM2) * n(a.sepM2));

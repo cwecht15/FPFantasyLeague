@@ -175,7 +175,9 @@ adv_rush AS (
          SUM(COALESCE(b.ybc, 0))  AS rush_ybc,
          SUM(COALESCE(b.yaco, 0)) AS rush_yaco,
          SUM(COALESCE(b.mtf, 0))  AS rush_mtf,
-         SUM(CASE WHEN COALESCE(pl.rushing_yards, 0) >= 15 THEN 1 ELSE 0 END) AS rush_explosive
+         SUM(CASE WHEN COALESCE(pl.rushing_yards, 0) >= 15 THEN 1 ELSE 0 END) AS rush_explosive,
+         -- split threshold: a 10+ yard carry is explosive for rushing
+         SUM(CASE WHEN COALESCE(pl.rushing_yards, 0) >= 10 THEN 1 ELSE 0 END) AS rush_explosive10
   FROM plays pl
   LEFT JOIN base b ON b.play_id = pl.play_id
   WHERE pl.runner_id IS NOT NULL
@@ -231,6 +233,8 @@ SELECT
   COALESCE(arsh.rush_mtf,0)      AS rush_mtf,
   COALESCE(ar.rec_mtf,0)         AS rec_mtf,
   COALESCE(arsh.rush_explosive,0) + COALESCE(ar.rec_explosive,0) AS explosive_plays,
+  COALESCE(arsh.rush_explosive10,0) AS rush_explosive,
+  COALESCE(ar.rec_explosive,0)      AS rec_explosive,
   COALESCE(xr.xfp_rec,0) + COALESCE(xru.xfp_rush,0) AS xfp,
   COALESCE(aq.pass_yds_5p,0)     AS pass_yds_5p,
   COALESCE(aq.pass_td_5p,0)      AS pass_td_5p,

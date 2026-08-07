@@ -59,11 +59,13 @@ export async function createLeagueAction(
 ): Promise<FormState> {
   const user = await requireUser();
   if (!user.isSiteAdmin) return { error: "Only site admins can create leagues" };
+  // The admin create form has no teamName input; FormData.get returns null for
+  // absent fields and z.optional() only accepts undefined — normalize.
   const parsed = createSchema.safeParse({
     name: formData.get("name"),
-    teamName: formData.get("teamName"),
-    numTeams: formData.get("numTeams"),
-    scoringPreset: formData.get("scoringPreset"),
+    teamName: formData.get("teamName") ?? undefined,
+    numTeams: formData.get("numTeams") ?? undefined,
+    scoringPreset: formData.get("scoringPreset") ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 

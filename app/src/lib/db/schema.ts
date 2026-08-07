@@ -556,6 +556,8 @@ export const playerWeekStats = pgTable(
     rushMtf: integer("rush_mtf").notNull().default(0), // MTF as a rusher
     recMtf: integer("rec_mtf").notNull().default(0), // MTF on catch-and-run
     explosivePlays: integer("explosive_plays").notNull().default(0), // 15+ yd rushes + receptions
+    rushExplosives: integer("rush_explosive").notNull().default(0), // 10+ yd rushes
+    recExplosives: integer("rec_explosive").notNull().default(0), // 15+ yd receptions
     xfp: doublePrecision("xfp").notNull().default(0), // expected fantasy points (PPR-style) from xfp_model: exp rec/rush yds, catches, TDs
     // QB advanced-mode inputs (5+ air-yard filter, sacks, EPA per dropback)
     passYds5p: integer("pass_yds_5p").notNull().default(0), // pass yds on 5+ air-yard throws
