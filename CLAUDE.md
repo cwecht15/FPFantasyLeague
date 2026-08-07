@@ -107,6 +107,12 @@ Deploy: `flyctl deploy --remote-only --yes` from `app/`. Secrets are already set
   dev data, temporarily override `APP_DB_URL` env-var to the dev DSN.
 - `tools/scoring/.env` also holds `NFL_DB_*` for the source DB (password mirrors
   `NFL_Database_Guide/.env`). `.prod_admin` / `.dev_admin` hold the seeded admin passwords.
+- **Outbound email** (`lib/notifications/service.ts`) picks the first configured
+  transport: SMTP (`SMTP_USER` + `SMTP_PASS`, host defaults to Gmail — the pass is a
+  Google *App Password*, needs 2FA on the account), else Resend (`RESEND_API_KEY`,
+  which only delivers to the account owner until a sending domain is verified), else
+  it just logs. `EMAIL_FROM` defaults to `SMTP_USER` when unset. Send failures are
+  swallowed by design — check `flyctl logs` after changing transports.
 - Migrations must be applied to BOTH databases: run `db:migrate` normally (local), then again
   with `$env:DATABASE_URL=<neon direct URL>` (the non-pooler host).
 

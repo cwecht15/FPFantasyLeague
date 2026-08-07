@@ -1,7 +1,15 @@
 /**
- * Notifications: one in_app row per event, plus best-effort email when
- * RESEND_API_KEY is set (console log in dev). Failures never break the
- * triggering action — notifying is always fire-and-forget semantics.
+ * Notifications: one in_app row per event, plus best-effort email.
+ *
+ * Transport is whichever is configured, in order:
+ *   1. SMTP  — SMTP_USER + SMTP_PASS (e.g. a Gmail account with an App
+ *      Password). Needs no sending domain, so it's the zero-cost option.
+ *   2. Resend — RESEND_API_KEY, which requires a verified sending domain
+ *      before it will deliver to anyone but the account owner.
+ *   3. Neither — log the message and move on (local dev).
+ *
+ * Failures never break the triggering action: notifying is always
+ * fire-and-forget.
  */
 
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
@@ -22,9 +30,42 @@ export interface NotifyPayload {
   body?: string;
 }
 
+/** Lazily-built SMTP transport, reused across sends (one pooled connection
+ *  rather than a TCP+TLS handshake per notification). */
+let smtpTransport: import("nodemailer").Transporter | null = null;
+
+async function getSmtpTransport(): Promise<import("nodemailer").Transporter | null> {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return null;
+  if (!smtpTransport) {
+    const nodemailer = await import("nodemailer");
+    smtpTransport = nodemailer.createTransport({
+      host: process.env.SMTP_HOST ?? "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT ?? 465),
+      secure: Number(process.env.SMTP_PORT ?? 465) === 465, // implicit TLS on 465, STARTTLS on 587
+      auth: { user, pass },
+      pool: true,
+    });
+  }
+  return smtpTransport;
+}
+
 async function sendEmail(to: string, subject: string, body: string): Promise<void> {
+  // Gmail rewrites From to the authenticated account anyway, so default the
+  // sender to SMTP_USER when EMAIL_FROM isn't set for this transport.
+  const from =
+    process.env.EMAIL_FROM ??
+    (process.env.SMTP_USER ? `FP Fantasy League <${process.env.SMTP_USER}>` : null) ??
+    "FP Fantasy League <noreply@example.com>";
+
+  const smtp = await getSmtpTransport();
+  if (smtp) {
+    await smtp.sendMail({ from, to, subject, text: body });
+    return;
+  }
+
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM ?? "FP Fantasy League <noreply@example.com>";
   if (!key) {
     console.log(`[email:dev] to=${to} subject="${subject}" body="${body}"`);
     return;
