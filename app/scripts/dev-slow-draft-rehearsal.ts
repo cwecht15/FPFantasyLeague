@@ -7,7 +7,8 @@
  * Users:  rehearsal-<n>@fpfl.dev / rehearsal123!   (created if missing)
  * Config: short pick clock + few rounds so a rehearsal finishes in minutes.
  *
- * Run:  npx tsx scripts/dev-slow-draft-rehearsal.ts [users=3] [secondsPerPick=30] [rounds=2]
+ * Run:  npx tsx scripts/dev-slow-draft-rehearsal.ts [users=3] [secondsPerPick=30] [rounds=2] [season=2025]
+ *       (season N ranks draft availables by season N-1 stats — use 2026 on prod)
  * Then: sign in as the site admin, open the league's Draft tab, Start draft.
  * NOTE: run the worker (npm run worker) or expired clocks will never autopick.
  */
@@ -28,6 +29,7 @@ async function main() {
   const spRaw = Number(process.argv[3] ?? 30);
   const secondsPerPick = spRaw <= 0 ? 0 : Math.max(spRaw, 30); // 0 = no clock
   const rounds = Number(process.argv[4] ?? 2);
+  const season = Number(process.argv[5] ?? 2025);
 
   // Reset any previous rehearsal league (cascades picks/rosters/settings).
   const old = await db
@@ -59,7 +61,7 @@ async function main() {
 
   const league = await createLeague({
     name: LEAGUE_NAME,
-    season: 2025,
+    season,
     numTeams: numUsers,
     scoringPreset: "fp_advanced",
     teamName: "Rehearsal 1",
