@@ -505,9 +505,50 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--color-muted);
   padding: 2px 5px;
 }
+/* Per-position identity. The brand allows exactly three colors, so positions
+   are distinguished by fill weight rather than hue: flame QB, solid-paper RB,
+   outlined WR, tinted TE, dashed COACH. Used by the draft board + player lists. */
 .pos.QB {
   border-color: rgba(204, 51, 51, 0.55);
   color: var(--color-flame);
+  background: rgba(204, 51, 51, 0.12);
+}
+.pos.RB {
+  background: var(--color-paper);
+  border-color: var(--color-paper);
+  color: var(--color-ink);
+}
+.pos.WR {
+  border-color: var(--color-paper);
+  color: var(--color-paper);
+}
+.pos.TE {
+  background: rgba(240, 240, 240, 0.16);
+  border-color: rgba(240, 240, 240, 0.16);
+  color: var(--color-paper);
+}
+.pos.COACH {
+  border-style: dashed;
+  border-color: rgba(240, 240, 240, 0.5);
+  color: var(--color-muted);
+}
+
+/* Draft-board card accent: a left stripe echoing the position chip, so a
+   filled board reads position-by-position at a glance. */
+.pk-QB {
+  border-left: 3px solid var(--color-flame) !important;
+}
+.pk-RB {
+  border-left: 3px solid var(--color-paper) !important;
+}
+.pk-WR {
+  border-left: 3px solid rgba(240, 240, 240, 0.55) !important;
+}
+.pk-TE {
+  border-left: 3px solid rgba(240, 240, 240, 0.26) !important;
+}
+.pk-COACH {
+  border-left: 3px dashed rgba(240, 240, 240, 0.5) !important;
 }
 
 .res {

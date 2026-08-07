@@ -54,16 +54,20 @@ export function DraftBoard({
           isCurrent
             ? "border-flame bg-flame text-paper"
             : player
-              ? "border-line bg-surface"
+              ? `border-line bg-surface pk-${player.position}`
               : "border-line/50 bg-pit"
         }`}
       >
         <div className="flex items-baseline justify-between gap-1">
           <span className="font-mono text-[10px] text-faint">{pick.overallPick}</span>
           {player && (
-            <span className="label !text-[9px]">
-              {player.position}
-              {player.nflTeam ? ` · ${player.nflTeam}` : ""}
+            <span className="flex items-center gap-1">
+              <span className={`pos ${player.position} !min-w-0 !px-1 !text-[9px]`}>
+                {player.position}
+              </span>
+              {player.nflTeam && (
+                <span className="label !text-[9px]">{player.nflTeam}</span>
+              )}
             </span>
           )}
         </div>
