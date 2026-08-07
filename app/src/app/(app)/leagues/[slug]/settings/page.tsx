@@ -128,11 +128,16 @@ export default async function SettingsPage({
       <div className="panel mt-4">
         <div className="ptitle">
           <span className="t">Scoring — {settings.scoringRules.preset === "fp_advanced" ? "FP Advanced" : (settings.scoringRules.preset ?? "custom").toUpperCase()}</span>
-          {admin && (
-            <Link href="/admin/scoring-lab" className="m">
-              Edit scoring in the Lab →
+          <span className="flex items-center gap-4">
+            <Link href={`/leagues/${slug}/scoring-card`} className="m">
+              Full card / export →
             </Link>
-          )}
+            {admin && (
+              <Link href="/admin/scoring-lab" className="m">
+                Edit scoring in the Lab →
+              </Link>
+            )}
+          </span>
         </div>
         <table className="tbl">
           <tbody>
@@ -231,8 +236,8 @@ export default async function SettingsPage({
             >
               <input type="hidden" name="slug" value={slug} />
               {(() => {
-                const { groups } = groupsFromRules(settings.scoringRules);
-                return <RuleFieldsets groups={groups} />;
+                const { groups, scope } = groupsFromRules(settings.scoringRules);
+                return <RuleFieldsets groups={groups} scope={scope} />;
               })()}
             </ActionForm>
           </div>
