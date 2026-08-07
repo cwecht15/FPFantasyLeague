@@ -35,7 +35,7 @@ const pts = (v: number): string => (v > 0 ? `+${n(v)}` : n(v));
 
 const perYd = (v: number): string => `${pts(v)} / yd`;
 const times = (v: number): string => `× ${n(v)}`;
-const ydsPer = (v: number): string => (v > 0 ? `1 pt / ${n(v)} yds` : "off");
+const ydsPer = (v: number): string => `1 pt / ${n(v)} yds`;
 
 export function presetLabel(rules: ScoringRules): string {
   const opt = SCORING_PRESET_OPTIONS.find((o) => o.key === rules.preset);
@@ -59,14 +59,16 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
       ? [{ label, value: fmt(value), positions }]
       : [];
 
+  // Only components that actually contribute points appear on the card —
+  // zeroed base stats (e.g. fp_advanced's passing yards/TD) are simply absent.
   sections.push({
     title: "Passing",
     positions: "QB",
     rows: [
-      { label: "Passing yards", value: ydsPer(rules.passYdsPerPoint) },
-      { label: "Passing TD", value: rules.passTd ? pts(rules.passTd) : "off" },
-      { label: "Interception", value: pts(rules.interception) },
-      { label: "2-pt pass", value: pts(rules.pass2pt) },
+      ...on("Passing yards", rules.passYdsPerPoint, ydsPer),
+      ...on("Passing TD", rules.passTd),
+      ...on("Interception", rules.interception),
+      ...on("2-pt pass", rules.pass2pt),
       ...on("Pass yds 5+ air", a?.deepPassYd, perYd),
       ...on("Passing 1st down (5+ air)", a?.deepPassFirstDown),
       ...on("Passing TD (5+ air)", a?.deepPassTd),
@@ -85,9 +87,9 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
   sections.push({
     title: "Rushing",
     rows: [
-      { label: "Rushing yards", value: ydsPer(rules.rushYdsPerPoint) },
-      { label: "Rushing TD", value: rules.rushTd ? pts(rules.rushTd) : "off" },
-      { label: "2-pt rush", value: pts(rules.rush2pt) },
+      ...on("Rushing yards", rules.rushYdsPerPoint, ydsPer),
+      ...on("Rushing TD", rules.rushTd),
+      ...on("2-pt rush", rules.rush2pt),
       ...on("Rushing MTF", a?.rushMtf, pts, scope.mtf),
       ...on("Rushing stuff", a?.rushStuff, pts, scope.rushDetail),
       ...on("Yards before contact", a?.ybcYd, perYd, scope.rushDetail),
@@ -99,13 +101,13 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
   sections.push({
     title: "Receiving",
     rows: [
-      { label: "Reception", value: rules.reception ? pts(rules.reception) : "off" },
+      ...on("Reception", rules.reception),
       ...(te !== undefined && te !== rules.reception
         ? [{ label: "TE reception (premium)", value: pts(te) }]
         : []),
-      { label: "Receiving yards", value: ydsPer(rules.recYdsPerPoint) },
-      { label: "Receiving TD", value: rules.recTd ? pts(rules.recTd) : "off" },
-      { label: "2-pt catch", value: pts(rules.rec2pt) },
+      ...on("Receiving yards", rules.recYdsPerPoint, ydsPer),
+      ...on("Receiving TD", rules.recTd),
+      ...on("2-pt catch", rules.rec2pt),
       ...on("Receiving 1st down", a?.recFirstDown, pts, scope.recFirstDown),
       ...on("First-read target", a?.recFirstRead, pts, scope.recFirstRead),
       ...on("Rec air yards", a?.recAirYd, perYd, scope.recAirYd),
@@ -135,7 +137,7 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
   }
 
   const miscRows: CardRow[] = [
-    { label: "Fumble lost", value: pts(rules.fumbleLost) },
+    ...on("Fumble lost", rules.fumbleLost),
     ...on("Missed tackle forced", a?.missedTackleForced, pts, scope.mtf),
     ...on("Explosive play (15+ yds)", a?.explosivePlay, pts, scope.explosivePlay),
     ...rules.bonuses.map((b) => ({
@@ -157,7 +159,7 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
       }
     }
   }
-  sections.push({ title: "Big plays & misc", rows: miscRows });
+  if (miscRows.length) sections.push({ title: "Big plays & misc", rows: miscRows });
 
   const c = rules.coaching;
   if (c) {
@@ -173,7 +175,8 @@ export function scoringCardSections(rules: ScoringRules): CardSection[] {
     }
   }
 
-  return sections;
+  // A fully zeroed category vanishes rather than rendering an empty panel.
+  return sections.filter((s) => s.rows.length > 0);
 }
 
 /** Plain-text rendition for copy/paste into a group chat. */

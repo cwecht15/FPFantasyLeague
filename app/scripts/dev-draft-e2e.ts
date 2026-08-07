@@ -123,8 +123,10 @@ async function main() {
     `UPDATE draft_picks SET deadline_at = now() - interval '1 second' WHERE id = $1`,
     [onClock2.id],
   );
+  // Note: the scan is global, so stale in-progress drafts elsewhere in the dev
+  // DB (e.g. a demo league) may also autopick — assert on OUR pick, not the count.
   const autos = await advanceExpiredDrafts();
-  if (autos !== 1) fail(`expected 1 autopick, got ${autos}`);
+  if (autos < 1) fail(`expected at least 1 autopick, got ${autos}`);
   board = await getDraftBoard(draft.id);
   const pick2 = board.find((p) => p.overallPick === 2)!;
   if (pick2.gsisId !== queuedPlayer.gsisId || !pick2.isAutopick) {
