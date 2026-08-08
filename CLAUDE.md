@@ -27,8 +27,12 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
 3. **No kickers, no defenses.** Offense only: QB/RB/WR/TE + FLEX, plus the **COACH slot** —
    each NFL team's coaching staff is a draftable synthetic player (`COACH-XX`, position
    `COACH`) scored on team scheme/results (play-action dropbacks 0.2, motion dropbacks 0.1,
-   win +5, 30+ points scored +10; see `CoachingRules`). The pipeline still pushes K/DST stat
-   lines (future-proofing) but the UI and roster templates exclude them.
+   win +5, 30+ points scored +10; optional 4th-down go, **designed run on 2nd & 7+** (a
+   negative playcalling tax) and **deep shot — 15+ air yards — on 2nd & 1-2**; see
+   `CoachingRules`). The pipeline still pushes K/DST stat lines (future-proofing) but the UI
+   and roster templates exclude them. The owner calls the COACH slot "PC" in conversation.
+   **House roster** (`DEFAULT_ROSTER_TEMPLATE`): QB / RB / RB / WR / WR / TE / FLEX / COACH
+   + 4 BENCH — 8 starters, 12 total, **no IR**.
 4. **No live scoring.** Scores exist only after the weekly charting push. Unscored values
    render an em dash `—`, never 0.00 or a spinner. Copy rhythm: *set lineup → slots lock at
    kickoff → results post Tuesday 6:00 AM ET*.
@@ -47,7 +51,9 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    only**; QB rushing scores at the standard rate. RB/WR/TE: PPR. **Missed tackles forced
    score RBs only (+2)**; **per-route separation scores WRs only**. The Scoring Lab also
    exposes rush/rec MTF splits, rec YACO, receiving first downs, **first-read targets**,
-   explosive plays (15+ yd), per-grade separation, **expected fantasy points (xFP) as a
+   explosive plays (combined 15+ yd, **or the splits: explosive rush 10+ yd and explosive
+   reception 15+ yd, each at its own rate — use the splits or the combined value, not
+   both**), per-grade separation, **expected fantasy points (xFP) as a
    per-position multiplier** (e.g. TE ×1.25), and the COACH rules. **Which positions earn
    each multi-position advanced stat is admin-configurable** via the Lab/settings *position
    scope* matrix (`AdvancedRules.scope`), defaulting to `ADVANCED_SCOPE_DEFAULTS` in
@@ -56,6 +62,9 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    The passing block stays QB-only (fixed `PASSING_POSITIONS`).
 8. **Email/password auth only.** No Google OAuth (owner decision — don't re-suggest it).
 9. Demo leagues (`leagues.is_demo`) are visible to site admins only, everywhere.
+10. **Season 1 is a single 12-manager league run as a slow draft with NO pick clock**
+    (`draftConfig.secondsPerPick = 0` → no deadline, no countdown, no autopick, worker not
+    needed during the draft). Don't assume a clock exists; `set-draft-clock.ts` changes it.
 
 ## Commands
 
@@ -83,6 +92,16 @@ suite; run the relevant one after touching its domain:
 - `dev-fp-advanced-check.ts [season]` — full-season leaderboards under the house preset
 - `dev-demo-league.ts` / `dev-demo-season.ts` — rebuild the two admin-only demo leagues
 - `dev-redesign-check.ts` — exercises dashboard/matchup-detail data paths
+- `dev-slow-draft-rehearsal.ts [users] [secondsPerPick] [rounds] [season]` — create/reset a
+  rehearsal league (`rehearsal-N@fpfl.dev` / `rehearsal123!`) for a live multi-browser draft.
+  Pass `0` for the clock to rehearse no-clock mode; use season 2026 on prod (ranks off 2025).
+- `set-draft-clock.ts <slug> <seconds>` — set/disable a league's pick clock (`0` = no clock),
+  including mid-draft (updates config, the live draft row, and the current pick's deadline)
+- `dev-email-test.ts <to>` — verify the configured mail transport end to end (auth + a real
+  send, reports accepted/rejected); use it instead of inferring from missing notifications
+
+Note `advanceExpiredDrafts` scans **globally**, so a stale in-progress draft elsewhere in the
+dev DB will also autopick during tests — assert on your own draft, not on the returned count.
 
 Pipeline (from the **repo root**, with the Anaconda Python):
 
@@ -94,7 +113,14 @@ C:\Users\cwech\anaconda3\python.exe -m tools.scoring.push_scores --season 2024 -
 ```
 
 Deploy: `flyctl deploy --remote-only --yes` from `app/`. Secrets are already set on the app
-(`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `EMAIL_FROM`); change via `flyctl secrets set`.
+(`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `EMAIL_FROM`, `SMTP_USER`, `SMTP_PASS`); change
+via `flyctl secrets set`.
+
+**The worker is kept scaled to zero to cut cost, and every deploy recreates it** (plus a
+standby). After each `flyctl deploy`, run `flyctl scale count worker=0 -a fpfl-fantasy --yes`
+and confirm with `flyctl scale show`; the destroy occasionally half-fails, so verify rather
+than assume. Scale it back up (`worker=1`) whenever scoring pushes, waivers, or draft clocks
+need to run — with the worker down, `score_dirty` never drains and pick clocks never expire.
 
 ## Environments & secrets (all gitignored)
 
@@ -109,10 +135,18 @@ Deploy: `flyctl deploy --remote-only --yes` from `app/`. Secrets are already set
   `NFL_Database_Guide/.env`). `.prod_admin` / `.dev_admin` hold the seeded admin passwords.
 - **Outbound email** (`lib/notifications/service.ts`) picks the first configured
   transport: SMTP (`SMTP_USER` + `SMTP_PASS`, host defaults to Gmail — the pass is a
-  Google *App Password*, needs 2FA on the account), else Resend (`RESEND_API_KEY`,
-  which only delivers to the account owner until a sending domain is verified), else
-  it just logs. `EMAIL_FROM` defaults to `SMTP_USER` when unset. Send failures are
-  swallowed by design — check `flyctl logs` after changing transports.
+  Google *App Password*, needs 2FA on the account; spaces in it are stripped), else Resend
+  (`RESEND_API_KEY`, which only delivers to the account owner until a sending domain is
+  verified), else it just logs. `EMAIL_FROM` defaults to `SMTP_USER` when unset. **Live
+  config: Gmail SMTP as `cwecht8@gmail.com`** — no sending domain was bought, so there is
+  no Resend key anymore. Send failures are swallowed by design; verify with
+  `dev-email-test.ts` and check `flyctl logs` (an `[email:dev]` line means no transport was
+  configured). Waiver emails come from the worker, so they need it scaled up; password
+  resets, on-the-clock draft alerts and trade notices come from the web app.
+- **Never print a secret.** Pipe values from the gitignored file straight into
+  `flyctl secrets set` (`$e = @{}; Get-Content .env.local | ForEach-Object { if ($_ -match
+  '^([A-Z_]+)="?([^"]*)"?$') { $e[$matches[1]] = $matches[2] } }`) — a plain `grep`/
+  `Select-String` for a key name echoes the value into the transcript.
 - Migrations must be applied to BOTH databases: run `db:migrate` normally (local), then again
   with `$env:DATABASE_URL=<neon direct URL>` (the non-pooler host).
 
@@ -140,7 +174,17 @@ claims. Handlers register in `worker/handlers/`.
 
 **Draft engine** (`lib/draft/service.ts`): picks pre-generated in snake order at start; the
 current pick row is read FOR UPDATE to serialize humans vs. autopick; the partial unique index
-on `(draft_id, gsis_id)` is the hard double-pick guard.
+on `(draft_id, gsis_id)` is the hard double-pick guard. `secondsPerPick = 0` means **no
+clock**: picks get a NULL `deadline_at`, so the worker's scan never sees them and nothing
+autopicks (honored in `startDraft`, pick advancement, and pause/resume). Available players and
+best-available autopick are ranked by **prior-season points under that league's own scoring
+rules** — `seasonPointsByPlayer` re-scores every stat line via `scoreStatLine` and caches per
+(season, rules JSON) for 10 min, since the draft room polls every 12s. The draft room groups
+availables by position (top 12 each, "see all" per group), shows G / FPTS / FPTS/G with
+click-to-sort, a position rank over the whole available pool, and a My-roster panel counting
+drafted players against the template's starter needs. Rounds are generated from
+`draftConfig.rounds` — if the roster template changes mid-draft, unmade trailing rounds must
+be deleted or teams draft more players than they have slots.
 
 **Lineups** (`lib/lineups/service.ts`): per-slot kickoff locks (via `player_week_games` →
 `nfl_games.kickoff_at`); lineups are **never empty by default** — `fillEmptyLineup` inherits
@@ -154,6 +198,22 @@ duplicate keys (a kicker who threw a pass appears in two frames), hashes rows, a
 `pbp` has **no `air_yards`** column (use `base.depth_target`) and **no receiving-TD** column
 (a rec TD is `passing_touchdown` credited to `receiver_id`).
 
+**Scoring Lab** (`/admin/scoring-lab`): admin-only what-if scoring over past stat lines,
+nothing written. `lab-form.ts` is the single field list — `LAB_FIELD_GROUPS` (rendered by
+`RuleFieldsets`, shared with league settings), `ruleValue` for pre-fill, `rulesFromForm` for
+parsing; **a new scoring component must be added in all three places** plus
+`scoring-systems.ts`, the Zod schema in `leagues/settings.ts`, `score-stat-line.ts`,
+`stat-row.ts` (easy to miss — an unmapped column silently scores 0), and `rules-card.ts`.
+The Lab has a preset loader (fills every field + scope checkbox client-side), sortable
+leaderboard columns, and a Scoring card overlay built from the live form values. Saved sets
+(`scoring_sets`) can be picked when creating a league — the dropdown value is `set:<id>`.
+
+**Scoring card** (`/leagues/[slug]/scoring-card`, outside the `(app)` group so it has no
+nav/ticker): screenshot-friendly rendering of a league's active rules, shared with the Lab
+overlay via `ScoringCardView` + `rules-card.ts`. Copy-as-image/PNG (html-to-image, capture
+`.card-shot`, skip `.card-toolbar`) and print/PDF (light-palette `@media print`). **Only
+components that actually score are rendered** — zeroed rules are omitted, not shown as "off".
+
 **UI system**: FantasyPoints BrandStyleGuide v6, "Game Day" direction. Exactly three colors
 (#111111 / #F0F0F0 / #CC3333 — red is CTAs/highlights only), Kanit ExtraBold Italic uppercase
 for display, Mulish for body, JetBrains Mono for numerals. All shared patterns are semantic
@@ -161,7 +221,10 @@ classes in `app/src/app/globals.css` (`.panel .ptitle .tbl .btn(.pri/.gho) .btn2
 .pos .res .youchip .eyebrow .page-head .field .toast`); the canonical spec is
 `design/design_handoff_gameday_redesign/proto/brand.css` and the handoff README in that
 folder. Use these classes for new UI rather than ad-hoc Tailwind. Action feedback fires the
-global toast (`fireToast` from `components/toast.tsx`).
+global toast (`fireToast` from `components/toast.tsx`). Positions are distinguished by fill
+weight rather than hue to stay inside the three-color rule: `.pos.QB/RB/WR/TE/COACH` chips and
+matching `.pk-*` draft-board accents (flame QB, solid-paper RB, outlined WR, tinted TE, dashed
+COACH).
 
 ## Windows-specific traps (these have bitten before)
 
@@ -171,7 +234,13 @@ global toast (`fireToast` from `components/toast.tsx`).
   shows the demojibake pattern if it ever happens again).
 - `psql` isn't on PATH: `& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -c "..." "<dsn>"`,
   flags BEFORE the DSN (Windows getopt doesn't permute).
-- Git commit messages via PS here-strings must not contain double quotes.
+- Git commit messages via PS here-strings must not contain double quotes — and the classifier
+  may block a here-string commit outright; repeated `-m` flags work.
+- `grep -P` is unavailable in the bash shim (use `awk`), and `/tmp` paths from bash don't
+  resolve for Windows `node`/`esbuild` — use the scratchpad dir with a real Windows path.
+- Non-ASCII (em dashes, middots) passed through `curl -d` from bash gets mangled by the
+  console codepage. Node's `fetch`/`nodemailer` handle UTF-8 correctly — don't "fix" the app
+  based on a mojibaked curl test.
 
 ## Repo & docs
 
