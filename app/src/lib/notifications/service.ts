@@ -36,7 +36,9 @@ let smtpTransport: import("nodemailer").Transporter | null = null;
 
 async function getSmtpTransport(): Promise<import("nodemailer").Transporter | null> {
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  // Google shows App Passwords as "abcd efgh ijkl mnop"; the spaces are display
+  // only and SMTP AUTH rejects them, so strip whatever was pasted in.
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
   if (!user || !pass) return null;
   if (!smtpTransport) {
     const nodemailer = await import("nodemailer");
