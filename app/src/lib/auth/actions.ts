@@ -13,7 +13,7 @@ import { z } from "zod";
 import { and, eq, gt, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { users, verificationTokens } from "@/lib/db/schema";
+import { leagues, users, verificationTokens } from "@/lib/db/schema";
 import { signIn, signOut } from "@/lib/auth";
 import { rateLimit } from "@/lib/auth/rate-limit";
 
@@ -66,6 +66,12 @@ export async function signup(
   return login(_prev, formData);
 }
 
+/** Only allow same-site paths as a post-login destination ("/join/abc"). */
+function safeNext(formData: FormData): string {
+  const next = String(formData.get("next") ?? "");
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/leagues";
+}
+
 export async function login(
   _prev: AuthFormState,
   formData: FormData,
@@ -78,7 +84,7 @@ export async function login(
     await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      redirectTo: "/leagues",
+      redirectTo: safeNext(formData),
     });
     return { error: null }; // unreachable — signIn redirects
   } catch (err) {
@@ -86,6 +92,83 @@ export async function login(
       return { error: "Invalid email or password" };
     }
     throw err; // NEXT_REDIRECT and friends must propagate
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Invite-link signup: create the account AND join the league in one step
+// (the /join/[code] page). Username = display name; login stays email-based.
+// ---------------------------------------------------------------------------
+
+const joinSignupSchema = signupSchema.extend({
+  teamName: z.string().trim().min(2, "Team name must be at least 2 characters").max(40),
+  inviteCode: z.string().trim().min(4).max(40),
+});
+
+export async function signupAndJoin(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = joinSignupSchema.safeParse({
+    displayName: formData.get("displayName"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    teamName: formData.get("teamName"),
+    inviteCode: formData.get("inviteCode"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const { displayName, email, password, teamName, inviteCode } = parsed.data;
+
+  if (!rateLimit(`signup:${email.toLowerCase()}`, 3, 60 * 60 * 1000)) {
+    return { error: "Too many attempts — try again later" };
+  }
+
+  // Validate the invite before creating the account, so a dead link doesn't
+  // leave an orphaned user with no league.
+  const [league] = await db
+    .select()
+    .from(leagues)
+    .where(eq(leagues.inviteCode, inviteCode))
+    .limit(1);
+  if (!league) return { error: "That invite link is no longer valid" };
+  if (league.status !== "setup" && league.status !== "drafting") {
+    return { error: "That league is no longer accepting new teams" };
+  }
+
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`lower(${users.email}) = ${email.toLowerCase()}`)
+    .limit(1);
+  if (existing) {
+    return { error: "An account with that email already exists. Sign in instead." };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const [user] = await db
+    .insert(users)
+    .values({ email, name: displayName, displayName, passwordHash })
+    .returning({ id: users.id });
+
+  const { joinLeague } = await import("@/lib/leagues/service");
+  const joined = await joinLeague({ inviteCode, teamName, userId: user.id });
+  if (joined.error || !joined.league) {
+    // The account was created; they can sign in normally and join elsewhere.
+    return { error: joined.error ?? "Could not join the league" };
+  }
+
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: `/leagues/${joined.league.slug}`,
+    });
+    return { error: null }; // unreachable — signIn redirects
+  } catch (err) {
+    if (err instanceof AuthError) return { error: "Invalid email or password" };
+    throw err;
   }
 }
 

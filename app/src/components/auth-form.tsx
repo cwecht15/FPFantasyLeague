@@ -9,14 +9,18 @@ const initialState: AuthFormState = { error: null };
 export function AuthForm({
   mode,
   action,
+  next,
 }: {
   mode: "login" | "signup";
   action: (prev: AuthFormState, formData: FormData) => Promise<AuthFormState>;
+  /** Same-site path to land on after login (e.g. an invite link). */
+  next?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
     <form action={formAction}>
+      {next && <input type="hidden" name="next" value={next} />}
       {mode === "signup" && (
         <div className="field">
           <label>Display name</label>

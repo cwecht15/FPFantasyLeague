@@ -6,13 +6,18 @@ import { AuthStage } from "@/components/auth-stage";
 
 export const metadata = { title: "Sign in — FP Fantasy League" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
   const session = await auth();
-  if (session?.user) redirect("/leagues");
+  if (session?.user) redirect(next?.startsWith("/") && !next.startsWith("//") ? next : "/leagues");
 
   return (
     <AuthStage title="Sign in" sub="Charting-scored fantasy football">
-      <AuthForm mode="login" action={login} />
+      <AuthForm mode="login" action={login} next={next} />
     </AuthStage>
   );
 }
