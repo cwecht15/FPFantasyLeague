@@ -155,10 +155,12 @@ export default async function DraftPage({
   const rosterSize = settings.rosterTemplate.slots.reduce((n, s) => n + s.count, 0);
 
   const myQueue = ctx.myTeam ? await listMyQueue(ctx.league.id, ctx.myTeam.id) : [];
-  const recent = board
+  // Newest first: the ticker shows the latest pick at the left edge and the
+  // full history scrolls off to the right.
+  const madePicks = board
     .filter((p) => p.pickedAt)
-    .sort((a, b) => b.overallPick - a.overallPick)
-    .slice(0, 10);
+    .sort((a, b) => b.overallPick - a.overallPick);
+  const recent = madePicks.slice(0, 10);
 
   const orderedTeams = [...teamRows].sort(
     (a, b) => (a.draftPosition ?? 99) - (b.draftPosition ?? 99),
@@ -227,6 +229,32 @@ export default async function DraftPage({
           )}
         </div>
       </div>
+
+      {/* pick ticker: latest pick first, scrolls horizontally, refreshed by the poll */}
+      {madePicks.length > 0 && (
+        <div className="panel mt-2 overflow-x-auto">
+          <div className="flex items-stretch" style={{ minWidth: "max-content" }}>
+            {madePicks.map((p) => {
+              const pl = boardPlayers.get(p.gsisId ?? "");
+              return (
+                <div
+                  key={p.id}
+                  className="shrink-0 border-r border-line px-4 py-2.5 last:border-r-0"
+                >
+                  <div className="num font-mono text-[10.5px] text-faint">
+                    R{p.round} · P{p.overallPick} · {teamById.get(p.teamId)?.name}
+                    {p.isAutopick && " (auto)"}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[13.5px]" style={{ fontWeight: 800 }}>
+                    {pl && <span className={`pos ${pl.position}`}>{pl.position}</span>}
+                    <span>{pl?.name ?? p.gsisId}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {draft.status !== "complete" && (
         <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: "1.8fr 1fr" }}>
@@ -370,7 +398,7 @@ export default async function DraftPage({
                   </tbody>
                 </table>
                 <p className="note px-[22px] py-2">
-                  Counts are starters needed (FLEX and bench fill from anywhere).
+                  Counts are starters needed (FLEX takes RB/WR/TE; bench fills from anywhere).
                 </p>
               </div>
             )}
