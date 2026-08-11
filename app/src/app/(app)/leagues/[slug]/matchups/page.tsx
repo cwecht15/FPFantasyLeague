@@ -5,7 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { matchups, teams } from "@/lib/db/schema";
-import { getLeagueForUser } from "@/lib/leagues/service";
+import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
+import { playoffRoundLabel } from "@/lib/matchups/playoffs";
 import { leagueCurrentWeek } from "@/lib/nfl/week";
 import { fmt1 } from "@/lib/format";
 
@@ -46,6 +47,9 @@ export default async function MatchupsPage({
   const teamName = new Map(teamRows.map((t) => [t.id, t.name]));
   const myTeamId = ctx.myTeam?.id ?? null;
   const base = `/leagues/${slug}/matchups`;
+  const playoffField = rows.some((m) => m.isPlayoff)
+    ? (await getSettings(ctx.league.id)).playoffConfig.teams
+    : 0;
 
   const teamRow = (m: (typeof rows)[number], side: "home" | "away") => {
     const id = side === "home" ? m.homeTeamId : m.awayTeamId!;
@@ -117,6 +121,11 @@ export default async function MatchupsPage({
                 </div>
                 <div className="flex items-center justify-between border-t border-line px-[22px] py-2.5 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-faint">
                   <span>
+                    {m.isPlayoff && (
+                      <span className="mr-3 text-flame">
+                        {playoffRoundLabel(m.playoffRound ?? 1, playoffField)}
+                      </span>
+                    )}
                     {m.status === "final" ? (m.isTie ? "Final — Tie" : "Final") : "Scheduled"}
                     {mine && <span className="ml-3 text-flame">Your matchup</span>}
                   </span>

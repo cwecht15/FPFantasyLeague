@@ -15,7 +15,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { notifications, teams, users } from "@/lib/db/schema";
+import { leagues, notifications, teams, users } from "@/lib/db/schema";
 
 export type NotifyType =
   | "your_turn"
@@ -141,8 +141,17 @@ export async function unreadCount(userId: string): Promise<number> {
 
 export async function listNotifications(userId: string, limit = 50) {
   return db
-    .select()
+    .select({
+      id: notifications.id,
+      type: notifications.type,
+      title: notifications.title,
+      body: notifications.body,
+      readAt: notifications.readAt,
+      createdAt: notifications.createdAt,
+      leagueSlug: leagues.slug,
+    })
     .from(notifications)
+    .leftJoin(leagues, eq(leagues.id, notifications.leagueId))
     .where(eq(notifications.userId, userId))
     .orderBy(desc(notifications.createdAt))
     .limit(limit);

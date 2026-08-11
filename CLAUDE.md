@@ -40,8 +40,18 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    last kickoff. The pipeline refuses to overwrite locked stat lines (`--force` overrides);
    the app never re-scores or re-rolls a locked, already-scored week. See
    `app/src/lib/nfl/locks.ts` and `_stats_locked` in `tools/scoring/pipeline.py`.
-6. **Playoffs = cross-league championship sprint.** No brackets. Top 2 from every league enter
-   one pool; cumulative starter points weeks 15–17 decide the champion (`/championship`).
+6. **Playoffs: sprint by default, per-league bracket opt-in.** The default
+   (`playoffConfig.mode = "championship"`) is the cross-league championship sprint — no
+   brackets; top 2 from every league enter one pool; cumulative starter points weeks 15–17
+   decide the champion (`/championship`). A league can opt into **standard in-league
+   playoffs** (`mode = "bracket"`, set via `scripts/set-playoff-mode.ts`): top 6 by record —
+   **points-for breaks ties** (= standings rank) — over weeks 15/16/17, seeds 1–2 first-round
+   byes, re-seeded each round (best vs worst), higher seed hosts, a tied playoff game
+   advances the higher seed. The worker's rollup auto-creates/advances the bracket once the
+   regular season is final (`lib/matchups/playoffs.ts`); playoff matchups are `is_playoff`
+   and never count toward standings. **The owner wants the real Season-1 league on bracket
+   mode** (decided 2026-08-11) — it isn't created on prod yet, so run `set-playoff-mode.ts
+   <slug> bracket` against prod when it is. The mock draft league stays on the default.
 7. **House scoring = `fp_advanced` preset** (default for new 12-team leagues). One unified,
    additive rule set scores every slot (there is **no** separate "QB advanced mode" — that
    was removed). QBs: basic passing-yards/TD turned off, scored instead on 5+ air-yard
@@ -89,6 +99,8 @@ suite; run the relevant one after touching its domain:
 - `dev-e2e.ts` — league → schedule → rosters → lineups → locks → score → rollup → standings
 - `dev-draft-e2e.ts` — snake order, double-pick guard, queue autopick, completion
 - `dev-trade-e2e.ts` — propose/accept/approve, roster swap, lineup clearing
+- `dev-playoffs-e2e.ts` — bracket-mode playoffs: seeding w/ PF tiebreak, byes, tie
+  advancement, reseeding, standings isolation
 - `dev-fp-advanced-check.ts [season]` — full-season leaderboards under the house preset
 - `dev-demo-league.ts` / `dev-demo-season.ts` — rebuild the two admin-only demo leagues
 - `dev-redesign-check.ts` — exercises dashboard/matchup-detail data paths
@@ -97,6 +109,8 @@ suite; run the relevant one after touching its domain:
   Pass `0` for the clock to rehearse no-clock mode; use season 2026 on prod (ranks off 2025).
 - `set-draft-clock.ts <slug> <seconds>` — set/disable a league's pick clock (`0` = no clock),
   including mid-draft (updates config, the live draft row, and the current pick's deadline)
+- `set-playoff-mode.ts <slug> <bracket|championship> [teams] [startWeek]` — switch a league
+  between in-league bracket playoffs and the default championship-sprint-only mode
 - `dev-email-test.ts <to>` — verify the configured mail transport end to end (auth + a real
   send, reports accepted/rejected); use it instead of inferring from missing notifications
 

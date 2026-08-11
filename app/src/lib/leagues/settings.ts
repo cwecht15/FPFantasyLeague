@@ -147,6 +147,12 @@ export const DEFAULT_WAIVER_CONFIG: WaiverConfig = waiverConfigSchema.parse({});
 // ---------------------------------------------------------------------------
 
 export const playoffConfigSchema = z.object({
+  /** "championship" = cross-league sprint only (the default; no in-league
+   *  bracket). "bracket" = standard in-league playoffs: top `teams` by record
+   *  (points-for tiebreak — the standings rank) seed a bracket starting at
+   *  `startWeek`, one week per round, top seeds bye when the field isn't a
+   *  power of two. See lib/matchups/playoffs.ts. */
+  mode: z.enum(["championship", "bracket"]).default("championship"),
   teams: z.number().int().min(2).max(16).default(6),
   startWeek: z.number().int().min(1).max(18).default(15),
   weeksPerRound: z.number().int().min(1).max(2).default(1),

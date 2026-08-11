@@ -16,6 +16,7 @@ import {
   weeksWithStats,
 } from "@/lib/scoring/score-week";
 import { recomputeStandings, rollupLeagueWeek } from "@/lib/matchups/rollup";
+import { advancePlayoffs } from "@/lib/matchups/playoffs";
 import { registerHandler } from "../handlers";
 
 registerHandler("score_week", async (payload) => {
@@ -49,5 +50,12 @@ registerHandler("rollup_matchups", async (payload) => {
   }
   const n = await rollupLeagueWeek(leagueId, season, week);
   await recomputeStandings(leagueId, season);
+  // Bracket-mode leagues: seed/advance in-league playoffs once results allow.
+  // Never lets a playoff hiccup fail the rollup itself.
+  try {
+    await advancePlayoffs(leagueId, season);
+  } catch (err) {
+    console.error(`[playoffs] league=${leagueId} advance failed:`, err);
+  }
   console.log(`[rollup] league=${leagueId} ${season} W${week}: ${n} matchups, standings updated`);
 });

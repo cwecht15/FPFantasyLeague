@@ -4,7 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { matchups, standings, teams, users } from "@/lib/db/schema";
-import { getLeagueForUser } from "@/lib/leagues/service";
+import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
+import { playoffConfigSchema } from "@/lib/leagues/settings";
 import { fmt1 } from "@/lib/format";
 
 export default async function StandingsPage({
@@ -20,6 +21,21 @@ export default async function StandingsPage({
 
   const league = ctx.league;
   const myTeamId = ctx.myTeam?.id ?? null;
+
+  // Bracket-mode leagues cut to their own playoffs; everyone else feeds the
+  // cross-league championship sprint (top 2).
+  const playoffCfg = playoffConfigSchema.safeParse(
+    (await getSettings(league.id)).playoffConfig,
+  );
+  const bracket = playoffCfg.success && playoffCfg.data.mode === "bracket";
+  const cutAfter = bracket ? playoffCfg.data.teams : 2;
+  const cutLabel = bracket ? "Playoff line" : "Championship sprint line";
+  const lastWeek = bracket
+    ? playoffCfg.data.startWeek + Math.ceil(Math.log2(Math.max(2, playoffCfg.data.teams))) - 1
+    : 17;
+  const subCopy = bracket
+    ? `Top ${playoffCfg.data.teams} by record make the playoffs (points-for breaks ties) — weeks ${playoffCfg.data.startWeek}–${lastWeek}.`
+    : "Top 2 enter the championship sprint after Week 14.";
 
   const rows = await db
     .select({
@@ -104,7 +120,7 @@ export default async function StandingsPage({
             {league.name} · {league.season}
           </div>
           <h1 className="display">Standings</h1>
-          <div className="sub">Top 2 enter the championship sprint after Week 14.</div>
+          <div className="sub">{subCopy}</div>
         </div>
       </header>
 
@@ -126,13 +142,13 @@ export default async function StandingsPage({
           <tbody>
             {rows.map((r, i) => (
               <>
-                {i === 2 && (
-                  <tr key="sprintline">
+                {i === cutAfter && (
+                  <tr key="cutline">
                     <td colSpan={9} className="!border-0 !p-0">
                       <div className="flex items-center gap-3 px-3.5 py-1">
                         <div className="red-rule flex-1" />
                         <span className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-flame">
-                          Championship sprint line
+                          {cutLabel}
                         </span>
                         <div className="red-rule flex-1" />
                       </div>

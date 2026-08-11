@@ -293,10 +293,11 @@ export async function makePick(opts: {
         );
         if (info) {
           const { notifyTeamOwner } = await import("@/lib/notifications/service");
+          const base = process.env.AUTH_URL ?? "http://localhost:3000";
           await notifyTeamOwner(info.team_id, draft.league_id, {
             type: "your_turn",
             title: "You're on the clock!",
-            body: `Your draft pick is up — make it at /leagues/${info.slug}/draft`,
+            body: `Your draft pick is up — make it at ${base}/leagues/${info.slug}/draft`,
           });
         }
       } catch (err) {

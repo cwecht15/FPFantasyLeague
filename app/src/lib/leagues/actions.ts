@@ -231,6 +231,7 @@ export async function updateConfigsAction(
   if (!waiver.success) return { error: `Waiver config: ${waiver.error.issues[0]?.message}` };
 
   const playoff = playoffConfigSchema.safeParse({
+    mode: formData.get("playoffMode") ?? undefined,
     teams: Number(formData.get("playoffTeams")),
     startWeek: Number(formData.get("playoffStartWeek")),
     weeksPerRound: Number(formData.get("weeksPerRound")),

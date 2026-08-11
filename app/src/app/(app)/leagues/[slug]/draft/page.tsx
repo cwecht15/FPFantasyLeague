@@ -161,6 +161,17 @@ export default async function DraftPage({
     .filter((p) => p.pickedAt)
     .sort((a, b) => b.overallPick - a.overallPick);
   const recent = madePicks.slice(0, 10);
+  // The ticker also previews who's up: the on-clock pick sits just left of the
+  // latest made pick, with the following picks stacked further left, so the
+  // whole strip stays chronological right-to-left.
+  const upcoming =
+    draft.status === "complete"
+      ? []
+      : board
+          .filter((p) => !p.pickedAt)
+          .sort((a, b) => a.overallPick - b.overallPick)
+          .slice(0, 4)
+          .reverse();
 
   const orderedTeams = [...teamRows].sort(
     (a, b) => (a.draftPosition ?? 99) - (b.draftPosition ?? 99),
@@ -230,10 +241,35 @@ export default async function DraftPage({
         </div>
       </div>
 
-      {/* pick ticker: latest pick first, scrolls horizontally, refreshed by the poll */}
-      {madePicks.length > 0 && (
+      {/* pick ticker: upcoming picks on the left, then latest pick first,
+          scrolls horizontally, refreshed by the poll */}
+      {(madePicks.length > 0 || upcoming.length > 0) && (
         <div className="panel mt-2 overflow-x-auto">
           <div className="flex items-stretch" style={{ minWidth: "max-content" }}>
+            {upcoming.map((p) => {
+              const onClock = p.id === draft.currentPickId;
+              return (
+                <div
+                  key={p.id}
+                  className="shrink-0 border-r border-line px-4 py-2.5"
+                  style={onClock ? undefined : { opacity: 0.55 }}
+                >
+                  <div className="num font-mono text-[10.5px] text-faint">
+                    R{p.round} · P{p.overallPick} · {teamById.get(p.teamId)?.name}
+                  </div>
+                  <div
+                    className={`mt-0.5 text-[13.5px] ${onClock ? "display text-flame" : "text-faint"}`}
+                    style={onClock ? undefined : { fontWeight: 800 }}
+                  >
+                    {onClock
+                      ? draft.status === "paused"
+                        ? "Paused"
+                        : "On the clock"
+                      : "Up next"}
+                  </div>
+                </div>
+              );
+            })}
             {madePicks.map((p) => {
               const pl = boardPlayers.get(p.gsisId ?? "");
               return (
