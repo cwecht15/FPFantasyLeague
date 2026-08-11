@@ -54,6 +54,15 @@ async function getSmtpTransport(): Promise<import("nodemailer").Transporter | nu
 }
 
 async function sendEmail(to: string, subject: string, body: string): Promise<void> {
+  // Local safety valve: .env.local carries the real SMTP credentials, so a dev
+  // server or script exercising picks/waivers would otherwise email real (or
+  // worse, fake-domain) addresses. EMAIL_MODE=log — set in .env.local, absent
+  // on Fly — logs instead of sending. dev-email-test.ts builds its own
+  // transport, so explicit end-to-end email verification still works.
+  if (process.env.EMAIL_MODE === "log") {
+    console.log(`[email:log-only] to=${to} subject="${subject}"`);
+    return;
+  }
   // Gmail rewrites From to the authenticated account anyway, so default the
   // sender to SMTP_USER when EMAIL_FROM isn't set for this transport.
   const from =

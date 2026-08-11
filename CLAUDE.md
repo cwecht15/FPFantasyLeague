@@ -143,6 +143,10 @@ need to run — with the worker down, `score_dirty` never drains and pick clocks
   `dev-email-test.ts` and check `flyctl logs` (an `[email:dev]` line means no transport was
   configured). Waiver emails come from the worker, so they need it scaled up; password
   resets, on-the-clock draft alerts and trade notices come from the web app.
+  **`EMAIL_MODE=log` is set in `.env.local`** so local servers/scripts log instead of really
+  sending (the local env shares the real Gmail creds — a local test draft once emailed fake
+  `@fpfl.dev` users and bounced into the owner's inbox). Fly doesn't set it, so prod sends;
+  `dev-email-test.ts` bypasses it deliberately.
 - **Never print a secret.** Pipe values from the gitignored file straight into
   `flyctl secrets set` (`$e = @{}; Get-Content .env.local | ForEach-Object { if ($_ -match
   '^([A-Z_]+)="?([^"]*)"?$') { $e[$matches[1]] = $matches[2] } }`) — a plain `grep`/
