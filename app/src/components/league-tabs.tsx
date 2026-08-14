@@ -10,7 +10,6 @@ const TABS = [
   { href: "/players", label: "Players" },
   { href: "/matchups", label: "Matchups" },
   { href: "/standings", label: "Standings" },
-  { href: "/trades", label: "Trades" },
   { href: "/transactions", label: "Transactions" },
   { href: "/draft", label: "Draft" },
   { href: "/settings", label: "Settings" },

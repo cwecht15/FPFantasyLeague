@@ -222,11 +222,12 @@ export async function updateConfigsAction(
   });
   if (!draft.success) return { error: `Draft config: ${draft.error.issues[0]?.message}` };
 
+  const num = (key: string) => (formData.get(key) == null ? undefined : Number(formData.get(key)));
   const waiver = waiverConfigSchema.safeParse({
     mode: formData.get("waiverMode"),
-    processDow: Number(formData.get("processDow")),
-    processHourUtc: Number(formData.get("processHourUtc")),
-    faabBudget: Number(formData.get("faabBudget")),
+    processDow: num("processDow"),
+    processHourEt: num("processHourEt"),
+    faabBudget: num("faabBudget"),
   });
   if (!waiver.success) return { error: `Waiver config: ${waiver.error.issues[0]?.message}` };
 

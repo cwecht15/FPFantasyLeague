@@ -533,6 +533,74 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--color-muted);
 }
 
+/* ---- popup sheet (player game log) --------------------------------------------- */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(17, 17, 17, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.sheet {
+  width: min(720px, 100%);
+  max-height: 82vh;
+  overflow: auto;
+}
+/* Clickable player name — reads as text until hovered. */
+.namebtn {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+.namebtn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--color-flame);
+}
+
+/* ---- lineup editor (click-to-swap) -------------------------------------------- */
+/* Selection model: pick a slot then a player (or a player then a slot). The
+   selected row carries the flame stripe; rows that can legally receive the
+   selection read as .elig, everything else drops back with .mute. */
+.lu-row {
+  cursor: pointer;
+}
+.lu-row.sel td {
+  background: rgba(204, 51, 51, 0.12);
+}
+.lu-row.sel td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-flame);
+}
+.lu-row.elig td {
+  background: rgba(240, 240, 240, 0.045);
+}
+.lu-row.elig:hover td {
+  background: rgba(204, 51, 51, 0.1);
+}
+.lu-row.mute {
+  opacity: 0.35;
+  cursor: default;
+}
+.lu-row.lock {
+  cursor: default;
+}
+.lu-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--color-faint);
+  border: 1px solid var(--color-line-strong);
+  padding: 1.5px 6px;
+  margin-left: 8px;
+  vertical-align: 1.5px;
+  white-space: nowrap;
+}
+
 /* Draft-board card accent: a left stripe echoing the position chip, so a
    filled board reads position-by-position at a glance. */
 .pk-QB {
@@ -568,6 +636,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .res.L {
   border: 1px solid var(--color-line-strong);
   color: var(--color-muted);
+}
+.res.T {
+  border: 1px dashed var(--color-line-strong);
+  color: var(--color-faint);
 }
 
 .stat .v {

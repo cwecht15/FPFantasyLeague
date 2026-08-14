@@ -39,9 +39,6 @@ export function TopNav({
               Alerts
               {unread > 0 && <span className="badge">{unread}</span>}
             </Link>
-            <Link href="/championship" className={lk("/championship")}>
-              Championship
-            </Link>
             {isAdmin && (
               <Link href="/admin/scoring-lab" className={lk("/admin/scoring-lab")}>
                 Scoring Lab

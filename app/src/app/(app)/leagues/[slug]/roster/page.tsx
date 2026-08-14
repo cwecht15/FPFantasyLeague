@@ -10,6 +10,7 @@ import { getLineupView } from "@/lib/lineups/service";
 import { leagueCurrentWeek } from "@/lib/nfl/week";
 import { fmt1 } from "@/lib/format";
 import { DropButton } from "@/components/player-row-actions";
+import { PlayerName } from "@/components/player-log";
 
 export default async function RosterPage({
   params,
@@ -107,7 +108,9 @@ export default async function RosterPage({
               const starter = slot !== "BN" && slot !== "IR";
               return (
                 <tr key={r.gsisId} className="hov">
-                  <td className="tm">{r.name}</td>
+                  <td className="tm">
+                    <PlayerName slug={slug} gsisId={r.gsisId} name={r.name} />
+                  </td>
                   <td>
                     <span className={`pos ${r.position}`}>{r.position}</span>
                   </td>

@@ -20,8 +20,10 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
 ## Product rules (decided by the owner — do not regress)
 
 1. **Central administration.** Site admins (`users.is_site_admin`) create leagues, edit
-   settings, approve trades, run the Scoring Lab. There are **no per-league commissioners**.
-   Regular users join by invite code or admin assignment; they cannot create leagues.
+   settings, run the Scoring Lab. There are **no per-league commissioners**. Regular users
+   join by invite code or admin assignment; they cannot create leagues. **No trades**
+   (removed 2026-08-14): rosters change only via draft, free agency, and waivers — the
+   Trades tab is gone and `/trades` redirects home; `lib/trades/*` stays dormant.
 2. **Each user is in exactly one league.** `/leagues` redirects to it (join screen if none;
    admins → `/admin/leagues`). There is no "my leagues" list page.
 3. **No kickers, no defenses.** Offense only: QB/RB/WR/TE + FLEX, plus the **COACH slot** —
@@ -40,18 +42,19 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    last kickoff. The pipeline refuses to overwrite locked stat lines (`--force` overrides);
    the app never re-scores or re-rolls a locked, already-scored week. See
    `app/src/lib/nfl/locks.ts` and `_stats_locked` in `tools/scoring/pipeline.py`.
-6. **Playoffs: sprint by default, per-league bracket opt-in.** The default
-   (`playoffConfig.mode = "championship"`) is the cross-league championship sprint — no
-   brackets; top 2 from every league enter one pool; cumulative starter points weeks 15–17
-   decide the champion (`/championship`). A league can opt into **standard in-league
-   playoffs** (`mode = "bracket"`, set via `scripts/set-playoff-mode.ts`): top 6 by record —
-   **points-for breaks ties** (= standings rank) — over weeks 15/16/17, seeds 1–2 first-round
-   byes, re-seeded each round (best vs worst), higher seed hosts, a tied playoff game
-   advances the higher seed. The worker's rollup auto-creates/advances the bracket once the
-   regular season is final (`lib/matchups/playoffs.ts`); playoff matchups are `is_playoff`
-   and never count toward standings. **The owner wants the real Season-1 league on bracket
-   mode** (decided 2026-08-11) — it isn't created on prod yet, so run `set-playoff-mode.ts
-   <slug> bracket` against prod when it is. The mock draft league stays on the default.
+6. **Playoffs: in-league bracket, top 6 by wins, points-for breaks ties** (confirmed
+   2026-08-14; `playoffConfig.mode = "bracket"` is now the **default** and every existing
+   league was migrated). Top 6 by **wins** — PF is the only tiebreaker, which is exactly the
+   standings rank (`recomputeStandings`: wins desc, then PF desc) — over weeks 15/16/17;
+   seeds 1–2 first-round byes, re-seeded each round (best vs worst), higher seed hosts, a
+   tied playoff game advances the higher seed. The worker's rollup auto-creates/advances the
+   bracket once the regular season is final (`lib/matchups/playoffs.ts`); playoff matchups
+   are `is_playoff` and never count toward standings. `scripts/set-playoff-mode.ts <slug|all>
+   bracket [teams] [startWeek] [--prod]` changes it.
+   **The cross-league championship sprint is retired** (2026-08-14): the `/championship` page,
+   its nav link, and the league-home sprint banner were removed in favor of a playoff-race
+   banner. `mode = "championship"` survives only so old stored configs parse; the
+   `championship_entries` table and `lib/championship/*` are dormant, not wired to any page.
 7. **House scoring = `fp_advanced` preset** (default for new 12-team leagues). One unified,
    additive rule set scores every slot (there is **no** separate "QB advanced mode" — that
    was removed). QBs: basic passing-yards/TD turned off, scored instead on 5+ air-yard
@@ -75,6 +78,18 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
 10. **Season 1 is a single 12-manager league run as a slow draft with NO pick clock**
     (`draftConfig.secondsPerPick = 0` → no deadline, no countdown, no autopick, worker not
     needed during the draft). Don't assume a clock exists; `set-draft-clock.ts` changes it.
+11. **Game-lock free agency + FAAB waivers** (decided 2026-08-13; the `faab` waiver mode,
+    default for every league — `set-waiver-mode.ts` switches). A player is an instant
+    free-agent add until their NFL team's game kicks off; from kickoff they are **locked
+    wherever they are** (lineup, bench, or pool — no adds, no drops) until claims process
+    **Wednesday 3:00 AM ET**. Locked free agents take blind FAAB bids ($100/season/team,
+    `teams.faab_budget`); highest bid wins, **ties go to the worse record** (then lower PF,
+    then earlier claim; bids hidden from other managers while pending). After processing,
+    everyone unclaimed is a free agent again. Locks derive from the **season schedule**
+    (`nfl_games` via `lockedNflTeams` in `lib/transactions/game-lock.ts`), not
+    `player_week_games` — same for in-week lineup kickoff locks (`kickoffMap` falls back to
+    the team schedule until the stats push lands). The worker must be scaled up for claims
+    to actually process; nothing locks until the season's schedule is pushed to `nfl_games`.
 
 ## Commands
 

@@ -3,12 +3,7 @@
 import { and, eq, or } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import {
-  championshipEntries,
-  matchups,
-  standings,
-  teams,
-} from "@/lib/db/schema";
+import { matchups, standings, teams } from "@/lib/db/schema";
 import type { League, Team } from "@/lib/leagues/service";
 import { getSettings } from "@/lib/leagues/service";
 import { getLineupView } from "@/lib/lineups/service";
@@ -46,7 +41,12 @@ export interface HomeData {
     oppPoints: number;
     oppName: string;
   } | null;
-  sprint: { inField: boolean; seed: number | null };
+  /** Playoff shape, for the league-home race banner. */
+  playoffTeams: number;
+  playoffStartWeek: number;
+  playoffEndWeek: number;
+  /** First-round byes (field padded to the next power of two). */
+  playoffByes: number;
 }
 
 export async function getHomeData(league: League, myTeam: Team): Promise<HomeData> {
@@ -139,17 +139,22 @@ export async function getHomeData(league: League, myTeam: Team): Promise<HomeDat
     }
   }
 
-  const [entry] = await db
-    .select({ seed: championshipEntries.seed })
-    .from(championshipEntries)
-    .where(
-      and(eq(championshipEntries.season, league.season), eq(championshipEntries.teamId, myTeam.id)),
-    )
-    .limit(1);
-  const sprint = {
-    inField: !!entry,
-    seed: entry?.seed ?? null,
-  };
+  // Playoff shape for the race banner. The field can't exceed the league.
+  const pc = (await getSettings(league.id)).playoffConfig;
+  const playoffTeams = Math.min(pc.teams, teamRows.length);
+  const rounds = Math.ceil(Math.log2(Math.max(2, playoffTeams)));
+  const playoffByes = 2 ** rounds - playoffTeams;
 
-  return { week, standings: table, me, matchup, lineup, lastWeek, sprint };
+  return {
+    week,
+    standings: table,
+    me,
+    matchup,
+    lineup,
+    lastWeek,
+    playoffTeams,
+    playoffStartWeek: pc.startWeek,
+    playoffEndWeek: pc.startWeek + rounds - 1,
+    playoffByes,
+  };
 }

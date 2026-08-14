@@ -13,37 +13,8 @@ import { ActionForm } from "@/components/action-form";
 import { RuleFieldsets } from "@/components/rules-fields";
 import { CopyButton } from "@/components/copy-button";
 import { groupsFromRules } from "@/lib/scoring/lab-form";
-import type { ScoringRules } from "@/lib/scoring/scoring-systems";
-
-/** Flat rule/value rows for the manager's read-only scoring table. */
-function ruleRows(r: ScoringRules): [string, string][] {
-  const rows: [string, string][] = [
-    ["Passing yards", `1 pt / ${r.passYdsPerPoint} yds`],
-    ["Passing TD", String(r.passTd)],
-    ["Interception", String(r.interception)],
-    ["Rushing yards", `1 pt / ${r.rushYdsPerPoint} yds`],
-    ["Rushing TD", String(r.rushTd)],
-    ["Reception", String(r.reception)],
-    ["Receiving yards", `1 pt / ${r.recYdsPerPoint} yds`],
-    ["Receiving TD", String(r.recTd)],
-    ["Fumble lost", String(r.fumbleLost)],
-  ];
-  const a = r.advanced;
-  if (a?.missedTackleForced) rows.push(["Missed tackle forced (RB)", String(a.missedTackleForced)]);
-  if (a?.deepPassYd) rows.push(["Pass yds 5+ air", `${a.deepPassYd} / yd`]);
-  if (a?.deepPassFirstDown) rows.push(["Passing 1st down (5+ air)", String(a.deepPassFirstDown)]);
-  if (a?.deepPassTd) rows.push(["Passing TD (5+ air)", String(a.deepPassTd)]);
-  if (a?.sackTaken) rows.push(["Sack taken", String(a.sackTaken)]);
-  if (a?.epaPerDropback) rows.push(["EPA / dropback ×", String(a.epaPerDropback)]);
-  if (a?.epaTotal) rows.push(["EPA total ×", String(a.epaTotal)]);
-  if (a?.recFirstRead) rows.push(["First-read target", String(a.recFirstRead)]);
-  if (r.xfp) {
-    for (const [label, key] of [["QB", "qb"], ["RB", "rb"], ["WR", "wr"], ["TE", "te"]] as const) {
-      if (r.xfp[key]) rows.push([`xFP × ${label}`, String(r.xfp[key])]);
-    }
-  }
-  return rows;
-}
+import { presetLabel, scoringCardSections } from "@/lib/scoring/rules-card";
+import { nextWeeklyEt, WAIVER_DOW, WAIVER_HOUR_ET } from "@/lib/transactions/game-lock";
 
 export default async function SettingsPage({
   params,
@@ -59,6 +30,63 @@ export default async function SettingsPage({
   const league = ctx.league;
   const settings = await getSettings(league.id);
   const admin = session.user.isSiteAdmin;
+
+  // ---- "How this league works" copy, derived from the live configs ----
+  const wc = settings.waiverConfig;
+  const pc = settings.playoffConfig;
+  const dc = settings.draftConfig;
+  const waiverRun = nextWeeklyEt(wc.processDow ?? WAIVER_DOW, wc.processHourEt ?? WAIVER_HOUR_ET);
+  const waiverRunLabel = waiverRun.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const lastRegWeek = Math.max(1, pc.startWeek - 1);
+  const playoffLastWeek = pc.startWeek + Math.ceil(Math.log2(Math.max(2, pc.teams))) - 1;
+
+  const howItWorks: [string, string][] = [
+    [
+      "Free agency",
+      wc.mode === "none"
+        ? "Open free agency — adds apply instantly, first come first served."
+        : "Any player is an instant add until their NFL game kicks off. From kickoff they're locked wherever they are — lineup, bench, or free-agent pool — until waivers process.",
+    ],
+    ...(wc.mode === "faab"
+      ? ([
+          [
+            "Waivers",
+            `Locked free agents take blind bids from a $${wc.faabBudget ?? 100} season budget. ` +
+              `Claims process ${waiverRunLabel} ET each week — highest bid wins, ties go to the ` +
+              `worse record, and the budget only spends when you win. Afterward everyone ` +
+              `unclaimed is a free agent again.`,
+          ],
+        ] as [string, string][])
+      : []),
+    [
+      "Lineups",
+      "Set your lineup any time before kickoff — each slot locks individually when that player's game starts. Scores post Tuesday 6:00 AM ET after charting; no live scoring.",
+    ],
+    [
+      "Schedule",
+      `Round-robin head-to-head, weeks 1–${lastRegWeek}.${league.numTeams % 2 === 1 ? " Odd team count — one team is on bye each week." : ""}`,
+    ],
+    [
+      "Playoffs",
+      `Top ${pc.teams} by wins make the bracket — points for breaks ties — over weeks ` +
+        `${pc.startWeek}–${playoffLastWeek}. Top seeds bye the first round when the field ` +
+        `isn't a power of two; every round re-seeds best vs worst, the higher seed hosts, ` +
+        `and a tied playoff game advances the higher seed.`,
+    ],
+    [
+      "Draft",
+      `${dc.rounds}-round snake${dc.thirdRoundReversal ? " with 3rd-round reversal" : ""}, ` +
+        (dc.secondsPerPick > 0
+          ? `${dc.secondsPerPick} seconds per pick.`
+          : "no pick clock — slow draft, picks never expire."),
+    ],
+    ["Trades", "Not part of this platform — rosters change via the draft, free agency, and waivers."],
+  ];
 
   return (
     <div>
@@ -127,7 +155,25 @@ export default async function SettingsPage({
 
       <div className="panel mt-4">
         <div className="ptitle">
-          <span className="t">Scoring — {settings.scoringRules.preset === "fp_advanced" ? "FP Advanced" : (settings.scoringRules.preset ?? "custom").toUpperCase()}</span>
+          <span className="t">How this league works</span>
+        </div>
+        <table className="tbl">
+          <tbody>
+            {howItWorks.map(([label, copy]) => (
+              <tr key={label}>
+                <td className="dim" style={{ width: 130, verticalAlign: "top" }}>
+                  {label}
+                </td>
+                <td style={{ fontSize: 13 }}>{copy}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel mt-4">
+        <div className="ptitle">
+          <span className="t">Scoring — {presetLabel(settings.scoringRules)}</span>
           <span className="flex items-center gap-4">
             <Link href={`/leagues/${slug}/scoring-card`} className="m">
               Full card / export →
@@ -141,17 +187,38 @@ export default async function SettingsPage({
         </div>
         <table className="tbl">
           <tbody>
-            {ruleRows(settings.scoringRules).map(([rule, value]) => (
-              <tr key={rule}>
-                <td className="dim">{rule}</td>
-                <td className="r num">{value}</td>
-              </tr>
-            ))}
+            {scoringCardSections(settings.scoringRules)
+              .filter((sec) => sec.rows.length > 0)
+              .map((sec) => (
+                <>
+                  <tr key={`h-${sec.title}`}>
+                    <td colSpan={2} className="!pb-1 !pt-4">
+                      <span className="label">{sec.title}</span>
+                      {sec.positions && (
+                        <span className="ml-2 text-[10.5px] text-faint">{sec.positions}</span>
+                      )}
+                    </td>
+                  </tr>
+                  {sec.rows.map((row) => (
+                    <tr key={`${sec.title}-${row.label}`}>
+                      <td className="dim">
+                        {row.label}
+                        {row.positions && row.positions.length > 0 && (
+                          <span className="ml-2 text-[10px] text-faint">
+                            {row.positions.join(" · ")}
+                          </span>
+                        )}
+                      </td>
+                      <td className="r num">{row.value}</td>
+                    </tr>
+                  ))}
+                </>
+              ))}
           </tbody>
         </table>
         <p className="note px-[22px] py-3">
-          Points come from post-game charting — results post Tuesday 6:00 AM ET, final
-          Thursday noon.
+          Only components that score points are listed. Points come from post-game charting —
+          results post Tuesday 6:00 AM ET, final Thursday noon.
         </p>
       </div>
 

@@ -96,7 +96,10 @@ export async function ensureLineup(
   });
 }
 
-/** Kickoff time per player for a week (only players that have a game). */
+/** Kickoff time per player for a week. player_week_games rows arrive with the
+ *  weekly stats push (after the games), so for the live week we fall back to
+ *  the season schedule: the player's NFL team's game that week. Without the
+ *  fallback, nothing would lock at kickoff until Tuesday. */
 export async function kickoffMap(
   gsisIds: string[],
   season: number,
@@ -115,7 +118,30 @@ export async function kickoffMap(
         eq(playerWeekGames.week, week),
       ),
     );
-  return new Map(rows.map((r) => [r.gsisId, r.kickoffAt]));
+  const map = new Map(rows.map((r) => [r.gsisId, r.kickoffAt]));
+
+  const missing = gsisIds.filter((id) => !map.has(id));
+  if (missing.length) {
+    const teamRows = await db
+      .select({ gsisId: players.gsisId, nflTeam: players.nflTeam })
+      .from(players)
+      .where(inArray(players.gsisId, missing));
+    const games = await db
+      .select({ home: nflGames.homeTeam, away: nflGames.awayTeam, kickoffAt: nflGames.kickoffAt })
+      .from(nflGames)
+      .where(
+        and(eq(nflGames.season, season), eq(nflGames.seasonType, REG), eq(nflGames.week, week)),
+      );
+    const teamKick = new Map<string, Date | null>();
+    for (const g of games) {
+      teamKick.set(g.home, g.kickoffAt);
+      teamKick.set(g.away, g.kickoffAt);
+    }
+    for (const t of teamRows) {
+      if (t.nflTeam && teamKick.has(t.nflTeam)) map.set(t.gsisId, teamKick.get(t.nflTeam)!);
+    }
+  }
+  return map;
 }
 
 export function isLocked(kickoffAt: Date | null | undefined, now = new Date()): boolean {

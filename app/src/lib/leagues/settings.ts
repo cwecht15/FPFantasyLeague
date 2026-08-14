@@ -132,10 +132,18 @@ export const DEFAULT_DRAFT_CONFIG: DraftConfig = draftConfigSchema.parse({});
 // ---------------------------------------------------------------------------
 
 export const waiverConfigSchema = z.object({
-  mode: z.enum(["priority", "faab", "none"]).default("priority"),
-  /** Day-of-week the worker processes claims (0=Sun … 6=Sat). */
+  /** House rule: "faab" game-lock waivers — players are instant free agents
+   *  until their NFL game kicks off, then locked (roster and pool alike) and
+   *  only claimable by blind FAAB bid until claims process. Ties go to the
+   *  worse record. "priority" is the legacy always-claim mode; "none" is
+   *  pure first-come free agency. */
+  mode: z.enum(["priority", "faab", "none"]).default("faab"),
+  /** Day-of-week claims process (0=Sun … 6=Sat). */
   processDow: z.number().int().min(0).max(6).default(3), // Wednesday
-  processHourUtc: z.number().int().min(0).max(23).default(13),
+  /** Hour (America/New_York) claims process — 3:00 AM ET per house rule.
+   *  Older stored configs may carry a legacy processHourUtc instead; readers
+   *  fall back to 3 when this is absent. */
+  processHourEt: z.number().int().min(0).max(23).default(3),
   faabBudget: z.number().int().min(0).max(10000).default(100),
 });
 export type WaiverConfig = z.infer<typeof waiverConfigSchema>;
@@ -147,12 +155,13 @@ export const DEFAULT_WAIVER_CONFIG: WaiverConfig = waiverConfigSchema.parse({});
 // ---------------------------------------------------------------------------
 
 export const playoffConfigSchema = z.object({
-  /** "championship" = cross-league sprint only (the default; no in-league
-   *  bracket). "bracket" = standard in-league playoffs: top `teams` by record
-   *  (points-for tiebreak — the standings rank) seed a bracket starting at
+  /** "bracket" (the house format): top `teams` by WINS — points-for breaks
+   *  ties, which is exactly the standings rank — seed a bracket starting at
    *  `startWeek`, one week per round, top seeds bye when the field isn't a
-   *  power of two. See lib/matchups/playoffs.ts. */
-  mode: z.enum(["championship", "bracket"]).default("championship"),
+   *  power of two. See lib/matchups/playoffs.ts. "championship" is the retired
+   *  cross-league sprint (its page was removed 2026-08-14); the value stays in
+   *  the enum so old stored configs still parse. */
+  mode: z.enum(["championship", "bracket"]).default("bracket"),
   teams: z.number().int().min(2).max(16).default(6),
   startWeek: z.number().int().min(1).max(18).default(15),
   weeksPerRound: z.number().int().min(1).max(2).default(1),

@@ -6,10 +6,6 @@ import { listMyLeagues } from "@/lib/leagues/service";
 import { TopNav } from "@/components/top-nav";
 import { ToastHost } from "@/components/toast";
 
-const TICKER_TEXT =
-  "LINEUPS LOCK AT KICKOFF · CHAMPIONSHIP SPRINT: TOP 2 FROM EVERY LEAGUE, " +
-  "WEEKS 15–17 DECIDE THE TITLE · RESULTS POST TUESDAY 6:00 AM ET · ";
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -25,12 +21,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <div className="ticker" aria-hidden>
-        <div className="ticker-track">
-          {TICKER_TEXT.repeat(3)}
-          {TICKER_TEXT.repeat(3)}
-        </div>
-      </div>
       <TopNav
         homeHref={homeHref}
         userLabel={session.user.name ?? session.user.email ?? ""}

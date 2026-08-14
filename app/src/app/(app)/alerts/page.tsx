@@ -59,7 +59,7 @@ export default async function AlertsPage() {
 
       {rows.length === 0 ? (
         <p className="empty">
-          Nothing yet — draft turns, waiver results, and trade updates land here.
+          Nothing yet — draft turns and waiver results land here.
         </p>
       ) : (
         <div className="flex flex-col gap-2">

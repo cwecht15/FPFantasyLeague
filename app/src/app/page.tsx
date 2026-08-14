@@ -34,7 +34,7 @@ export default function Home() {
           <p className="mt-6 max-w-xl text-lg text-muted">
             Leagues scored from post-game NFL charting data — accurate throws, hero
             catches, missed tackles forced. Draft async on your schedule, set your
-            lineup, and race every league&apos;s best into the championship sprint.
+            lineup, and play for the title.
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
@@ -71,8 +71,8 @@ export default function Home() {
           },
           {
             k: "03",
-            title: "Sprint finish",
-            body: "Top two teams from every league enter one pool. Weeks 15–17 decide the champion.",
+            title: "Playoff push",
+            body: "Top six by wins make the bracket — points for breaks ties. Weeks 15–17 decide the champion.",
           },
         ].map((f) => (
           <div key={f.k} className="bg-ink p-8">

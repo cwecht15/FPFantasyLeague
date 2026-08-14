@@ -5,6 +5,18 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { players, teams, transactions, waiverClaims } from "@/lib/db/schema";
 import { getLeagueForUser } from "@/lib/leagues/service";
+import { CancelClaimButton } from "@/components/player-row-actions";
+import { PlayerName } from "@/components/player-log";
+
+const fmtEt = (d: Date) =>
+  d.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }) + " ET";
 
 export default async function TransactionsPage({
   params,
@@ -42,13 +54,14 @@ export default async function TransactionsPage({
     .orderBy(desc(transactions.createdAt))
     .limit(100);
 
+  // Say what the move was, plainly: Add / Drop / Add + Drop / Waiver win / …
   const typeLabel: Record<string, string> = {
-    waiver: "Waiver",
+    waiver: "Waiver win",
     trade: "Trade",
-    add: "Free agent",
-    add_drop: "Free agent",
+    add: "Add",
+    add_drop: "Add + Drop",
     drop: "Drop",
-    draft: "Draft",
+    draft: "Draft pick",
   };
 
   return (
@@ -66,24 +79,32 @@ export default async function TransactionsPage({
             <div className="ptitle">
               <span className="t">Pending waiver claims</span>
             </div>
-            {pending.map((c) => (
-              <div
-                key={c.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-3 text-[13.5px] last:border-b-0"
-              >
-                <span>
-                  <span className="text-muted">{teamName.get(c.teamId)}</span> claims{" "}
-                  <b>{pn(c.addGsisId)}</b>
-                  {c.dropGsisId && <span className="text-muted"> (dropping {pn(c.dropGsisId)})</span>}
-                  {c.bidAmount !== null && (
-                    <span className="num font-mono"> · ${c.bidAmount}</span>
-                  )}
-                </span>
-                <span className="text-[11.5px] text-faint">
-                  processes {c.processAfter.toLocaleString()}
-                </span>
-              </div>
-            ))}
+            {pending.map((c) => {
+              const mine = ctx.myTeam?.id === c.teamId;
+              return (
+                <div
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-3 text-[13.5px] last:border-b-0"
+                >
+                  <span>
+                    <span className="text-muted">{teamName.get(c.teamId)}</span> claims{" "}
+                    <b>{pn(c.addGsisId)}</b>
+                    {c.dropGsisId && (
+                      <span className="text-muted"> (dropping {pn(c.dropGsisId)})</span>
+                    )}
+                    {mine && c.bidAmount !== null && (
+                      <span className="num font-mono"> · ${c.bidAmount}</span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-[11.5px] text-faint">
+                      processes {fmtEt(c.processAfter)}
+                    </span>
+                    {mine && <CancelClaimButton slug={slug} claimId={c.id} />}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <div className="h-4" />
         </>
@@ -106,10 +127,24 @@ export default async function TransactionsPage({
                   {typeLabel[t.type] ?? t.type}
                 </span>
                 <span className="text-muted">{t.teamId ? teamName.get(t.teamId) : "—"}</span>
-                {t.addGsisId && <b>+{pn(t.addGsisId)}</b>}
-                {t.dropGsisId && <span className="text-faint">−{pn(t.dropGsisId)}</span>}
+                {t.addGsisId && (
+                  <b>
+                    <span className="text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-flame">
+                      Add{" "}
+                    </span>
+                    <PlayerName slug={slug} gsisId={t.addGsisId} name={pn(t.addGsisId)!} />
+                  </b>
+                )}
+                {t.dropGsisId && (
+                  <span className="text-faint">
+                    <span className="text-[10.5px] font-extrabold uppercase tracking-[0.1em]">
+                      Drop{" "}
+                    </span>
+                    <PlayerName slug={slug} gsisId={t.dropGsisId} name={pn(t.dropGsisId)!} />
+                  </span>
+                )}
               </span>
-              <span className="text-[11.5px] text-faint">{t.createdAt.toLocaleString()}</span>
+              <span className="text-[11.5px] text-faint">{fmtEt(t.createdAt)}</span>
             </div>
           ))
         )}

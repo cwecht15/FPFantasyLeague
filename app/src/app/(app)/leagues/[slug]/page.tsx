@@ -179,29 +179,33 @@ export default async function LeagueHomePage({
       >
         <div>
           <div className="display text-[18px]">
-            Championship sprint —{" "}
-            {d.sprint.inField
-              ? "you're in the field"
-              : d.me && d.me.rank > 0 && d.me.rank <= 2
-                ? "you're inside the line"
-                : "top 2 qualify"}
+            Playoff race —{" "}
+            {d.playoffTeams >= d.standings.length
+              ? "everyone makes the bracket — seeding is the game"
+              : d.me && d.me.rank > 0
+                ? d.me.rank <= d.playoffTeams
+                  ? "you're inside the line"
+                  : "you're on the outside"
+                : `top ${d.playoffTeams} qualify`}
           </div>
           <p className="m-0 mt-[5px] max-w-[760px] text-[13px] text-muted">
-            Top 2 from every league enter one global pool after Week 14. Cumulative starter
-            points across Weeks 15–17 decide the champion.
-            {d.sprint.inField && d.sprint.seed
-              ? ` You're seeded #${d.sprint.seed} — keep setting your lineup.`
-              : d.me && d.me.rank > 0
-                ? ` You're currently ${ord(d.me.rank)}.`
-                : ""}
+            {d.playoffTeams >= d.standings.length
+              ? `All ${d.playoffTeams} teams seed by wins`
+              : `Top ${d.playoffTeams} by wins make the playoffs`}{" "}
+            — points for breaks ties. Bracket runs weeks {d.playoffStartWeek}–
+            {d.playoffEndWeek}
+            {d.playoffByes > 0
+              ? `; the top ${d.playoffByes} ${d.playoffByes === 1 ? "seed gets" : "seeds get"} a first-round bye`
+              : ""}
+            .{d.me && d.me.rank > 0 ? ` You're currently ${ord(d.me.rank)}.` : ""}
           </p>
         </div>
         <Link
-          href="/championship"
+          href={`${base}/standings`}
           className="whitespace-nowrap pb-0.5 text-xs font-extrabold uppercase tracking-[0.1em] text-paper"
           style={{ borderBottom: "2px solid var(--color-flame)" }}
         >
-          Sprint leaderboard →
+          Standings →
         </Link>
       </div>
     </div>
