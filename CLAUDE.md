@@ -4,8 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-FP Fantasy League — a public fantasy football platform (~50 leagues / ~600 users) scored from
-post-game NFL charting data. Two parts:
+FP Fantasy League (code/infra name) — a public fantasy football platform (~50 leagues /
+~600 users) scored from post-game NFL charting data. **The user-facing brand is "The Scott
+Bear Bowl"** (renamed 2026-08-29 to match the domain): every visible name — titles, email
+sender/subjects, landing copy, the scoring card — comes from `app/src/lib/brand.ts`
+(`SITE_NAME`, `SITE_NAME_BARE` for possessives, `SITE_URL`); never hardcode the name. The
+logo art in `public/brand/` is the FantasyPoints wordmark, kept deliberately (data-provider
+credit); the repo, package, Fly app `fpfl-fantasy`, and DB identifiers keep their FPFL
+names on purpose. Two parts:
 
 - `app/` — Next.js 16 App Router + React 19 + Tailwind v4 + Drizzle + Auth.js v5. Deployed on
   Fly.io as two process groups (`app` web + `worker` background) sharing one image, against a

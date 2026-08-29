@@ -1,4 +1,5 @@
 import type { CardSection } from "@/lib/scoring/rules-card";
+import { SITE_NAME } from "@/lib/brand";
 
 /**
  * The scoring card itself — header, grouped rule panels, footer note — shared
@@ -36,7 +37,7 @@ export function ScoringCardView({
       `}</style>
 
       <header className="mb-5">
-        <div className="eyebrow">FP Fantasy League · Scoring</div>
+        <div className="eyebrow">{SITE_NAME} · Scoring</div>
         <h1 className="display mt-1.5 text-[44px]">{title}</h1>
         <div className="label mt-2.5">{meta}</div>
       </header>

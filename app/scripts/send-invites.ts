@@ -5,6 +5,7 @@
  * Run:  npx tsx scripts/send-invites.ts <inviteCode> <email> [email...]
  */
 import "../src/lib/db/load-env";
+import { SITE_NAME, SITE_URL } from "../src/lib/brand";
 
 async function main() {
   const [code, ...recipients] = process.argv.slice(2);
@@ -19,15 +20,15 @@ async function main() {
     console.error("SMTP_USER / SMTP_PASS not set");
     process.exit(1);
   }
-  const from = process.env.EMAIL_FROM ?? `FP Fantasy League <${user}>`;
+  const from = process.env.EMAIL_FROM ?? `${SITE_NAME} <${user}>`;
 
   // Public origin of the site — the same AUTH_URL secret the app uses for
   // password-reset and on-the-clock links. Falls back to the Fly hostname.
-  const base = (process.env.AUTH_URL ?? "https://fpfl-fantasy.fly.dev").replace(/\/$/, "");
+  const base = (process.env.AUTH_URL ?? SITE_URL).replace(/\/$/, "");
   const link = `${base}/join/${code}`;
-  const subject = "You're invited — FP Fantasy League";
+  const subject = `You're invited — ${SITE_NAME}`;
   const body = [
-    "You're invited to an FP Fantasy League league.",
+    `You're invited to ${SITE_NAME}.`,
     "",
     `Join here: ${link}`,
     "",

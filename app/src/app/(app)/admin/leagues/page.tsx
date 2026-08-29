@@ -10,7 +10,7 @@ import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/copy-button";
 import { SCORING_PRESET_OPTIONS } from "@/lib/scoring/scoring-systems";
 
-export const metadata = { title: "Manage Leagues — FP Fantasy League" };
+export const metadata = { title: "Manage Leagues" };
 
 export default async function AdminLeaguesPage() {
   const session = await auth();

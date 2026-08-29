@@ -4,7 +4,7 @@ import { login } from "@/lib/auth/actions";
 import { AuthForm } from "@/components/auth-form";
 import { AuthStage } from "@/components/auth-stage";
 
-export const metadata = { title: "Sign in — FP Fantasy League" };
+export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({
   searchParams,

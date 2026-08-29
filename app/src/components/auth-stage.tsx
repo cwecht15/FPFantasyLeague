@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { SITE_NAME } from "@/lib/brand";
 
 /** Game Day auth stage: smoke background, flame-topped card, tagline below. */
 export function AuthStage({
@@ -16,7 +17,7 @@ export function AuthStage({
         <div className="login-card">
           <Image
             src="/brand/Wordmark-Primary.svg"
-            alt="Fantasy Points"
+            alt={SITE_NAME}
             width={120}
             height={22}
             style={{ height: 22, width: "auto", display: "block", margin: "0 auto 26px" }}

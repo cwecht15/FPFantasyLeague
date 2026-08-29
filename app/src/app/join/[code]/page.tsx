@@ -8,7 +8,7 @@ import { getMembership } from "@/lib/leagues/service";
 import { AuthStage } from "@/components/auth-stage";
 import { JoinSignupForm, JoinTeamForm } from "@/components/join-forms";
 
-export const metadata = { title: "Join league — FP Fantasy League" };
+export const metadata = { title: "Join league" };
 
 /** Invite link landing: /join/<inviteCode>. New managers create an account
  *  (username + password + team name) and join in one step; signed-in managers

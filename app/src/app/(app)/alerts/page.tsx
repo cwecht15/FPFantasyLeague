@@ -25,7 +25,7 @@ function alertHref(type: string, slug: string | null): string | null {
   }
 }
 
-export const metadata = { title: "Alerts — FP Fantasy League" };
+export const metadata = { title: "Alerts" };
 
 async function markReadAction() {
   "use server";

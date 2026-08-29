@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/lib/auth/actions";
+import { SITE_NAME } from "@/lib/brand";
 
 export function TopNav({
   homeHref,
@@ -27,7 +28,7 @@ export function TopNav({
           <Link href={homeHref} className="shrink-0">
             <Image
               src="/brand/Wordmark-Primary.svg"
-              alt="Fantasy Points"
+              alt={SITE_NAME}
               width={131}
               height={24}
               style={{ height: 24, width: "auto" }}

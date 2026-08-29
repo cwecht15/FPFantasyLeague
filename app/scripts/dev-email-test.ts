@@ -7,6 +7,7 @@
  */
 
 import "../src/lib/db/load-env";
+import { SITE_NAME } from "../src/lib/brand";
 
 async function main() {
   const to = process.argv[2];
@@ -17,7 +18,7 @@ async function main() {
 
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
-  const from = process.env.EMAIL_FROM ?? (user ? `FP Fantasy League <${user}>` : "");
+  const from = process.env.EMAIL_FROM ?? (user ? `${SITE_NAME} <${user}>` : "");
   console.log(
     `transport: ${user ? `SMTP (${process.env.SMTP_HOST ?? "smtp.gmail.com"} as ${user})` : process.env.RESEND_API_KEY ? "Resend" : "none — would log only"}`,
   );
@@ -40,7 +41,7 @@ async function main() {
   const info = await transport.sendMail({
     from,
     to,
-    subject: "FP Fantasy League — email test (em dash · middot)",
+    subject: `${SITE_NAME} — email test (em dash · middot)`,
     text:
       "Sent through the app's own transport.\n\n" +
       "Your draft pick is up — make it at /leagues/<slug>/draft · results post Tuesday 6:00 AM ET",

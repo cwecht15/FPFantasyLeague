@@ -4,7 +4,7 @@ import { signup } from "@/lib/auth/actions";
 import { AuthForm } from "@/components/auth-form";
 import { AuthStage } from "@/components/auth-stage";
 
-export const metadata = { title: "Create account — FP Fantasy League" };
+export const metadata = { title: "Create account" };
 
 export default async function SignupPage() {
   const session = await auth();

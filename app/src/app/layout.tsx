@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/brand";
 
 /* Numerals, scores, invite codes — per the Game Day handoff. */
 const jbMono = JetBrains_Mono({
@@ -27,8 +28,17 @@ const mulish = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "FP Fantasy League",
-  description: "Fantasy football scored from post-game NFL charting data.",
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    type: "website",
+    url: "/",
+  },
   icons: { icon: "/brand/Submark-Red.svg" },
 };
 

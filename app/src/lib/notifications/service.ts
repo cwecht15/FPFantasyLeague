@@ -15,6 +15,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { SITE_NAME } from "@/lib/brand";
 import { leagues, notifications, teams, users } from "@/lib/db/schema";
 
 export type NotifyType =
@@ -67,8 +68,8 @@ async function sendEmail(to: string, subject: string, body: string): Promise<voi
   // sender to SMTP_USER when EMAIL_FROM isn't set for this transport.
   const from =
     process.env.EMAIL_FROM ??
-    (process.env.SMTP_USER ? `FP Fantasy League <${process.env.SMTP_USER}>` : null) ??
-    "FP Fantasy League <noreply@example.com>";
+    (process.env.SMTP_USER ? `${SITE_NAME} <${process.env.SMTP_USER}>` : null) ??
+    `${SITE_NAME} <noreply@example.com>`;
 
   const smtp = await getSmtpTransport();
   if (smtp) {

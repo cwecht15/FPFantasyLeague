@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { leagues, users, verificationTokens } from "@/lib/db/schema";
 import { signIn, signOut } from "@/lib/auth";
 import { rateLimit } from "@/lib/auth/rate-limit";
+import { SITE_NAME_BARE } from "@/lib/brand";
 
 export interface AuthFormState {
   error: string | null;
@@ -212,7 +213,7 @@ export async function requestPasswordReset(
     const { notifyUser } = await import("@/lib/notifications/service");
     await notifyUser(user.id, null, {
       type: "your_turn", // reuse channel; subject line carries the meaning
-      title: "Reset your FP Fantasy League password",
+      title: `Reset your ${SITE_NAME_BARE} password`,
       body: `Use this link within 1 hour: ${link}`,
     });
   }

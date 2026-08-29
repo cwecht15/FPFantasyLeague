@@ -10,7 +10,7 @@ import { getDraft, getDraftBoard } from "@/lib/draft/service";
 import { PollRefresher } from "@/components/draft-client";
 import { DraftBoard, type BoardPlayer } from "@/components/draft-board";
 
-export const metadata = { title: "Draft board — FP Fantasy League" };
+export const metadata = { title: "Draft board" };
 
 export default async function DraftBoardPage({
   params,

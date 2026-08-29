@@ -9,7 +9,7 @@ import { ScoringLab } from "@/components/scoring-lab";
 import { deleteScoringSet } from "@/lib/scoring/lab-actions";
 import { defaultScopeState, groupsFromRules, LAB_FIELD_GROUPS } from "@/lib/scoring/lab-form";
 
-export const metadata = { title: "Scoring Lab — FP Fantasy League" };
+export const metadata = { title: "Scoring Lab" };
 
 export default async function ScoringLabPage({
   searchParams,
