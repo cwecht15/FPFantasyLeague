@@ -9,6 +9,11 @@ primary_region = 'iad'
 
 [build]
   dockerfile = 'Dockerfile'
+  # Once the custom domain's cert is issued, set this to the bare hostname
+  # (e.g. "fpfl.example.com") and redeploy: every other hostname, including
+  # fpfl-fantasy.fly.dev, then 308-redirects to it. Keep AUTH_URL in sync.
+  # [build.args]
+  #   CANONICAL_HOST = "fpfl.example.com"
 
 [processes]
   app = "node server.js"

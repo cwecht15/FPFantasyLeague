@@ -26,6 +26,10 @@ ENV NODE_OPTIONS=--max-old-space-size=4096
 # and no DB connection is opened during build (pg pools connect lazily).
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
 ENV AUTH_SECRET=build-placeholder
+# Canonical hostname for the host redirect in next.config.ts. Baked at build
+# time (redirects() runs during `next build`), supplied by fly.toml [build.args].
+ARG CANONICAL_HOST=
+ENV CANONICAL_HOST=$CANONICAL_HOST
 RUN npm run build
 
 # ---- Stage 3: lean runtime ----

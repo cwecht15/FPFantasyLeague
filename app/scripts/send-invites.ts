@@ -9,7 +9,7 @@ import "../src/lib/db/load-env";
 async function main() {
   const [code, ...recipients] = process.argv.slice(2);
   if (!code || recipients.length === 0) {
-    console.error("usage: npx tsx scripts/tmp-send-invites.ts <inviteCode> <email...>");
+    console.error("usage: npx tsx scripts/send-invites.ts <inviteCode> <email...>");
     process.exit(1);
   }
 
@@ -21,7 +21,10 @@ async function main() {
   }
   const from = process.env.EMAIL_FROM ?? `FP Fantasy League <${user}>`;
 
-  const link = `https://fpfl-fantasy.fly.dev/join/${code}`;
+  // Public origin of the site — the same AUTH_URL secret the app uses for
+  // password-reset and on-the-clock links. Falls back to the Fly hostname.
+  const base = (process.env.AUTH_URL ?? "https://fpfl-fantasy.fly.dev").replace(/\/$/, "");
+  const link = `${base}/join/${code}`;
   const subject = "You're invited — FP Fantasy League";
   const body = [
     "You're invited to an FP Fantasy League league.",

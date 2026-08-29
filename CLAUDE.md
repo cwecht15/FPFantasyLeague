@@ -145,6 +145,16 @@ Deploy: `flyctl deploy --remote-only --yes` from `app/`. Secrets are already set
 (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `EMAIL_FROM`, `SMTP_USER`, `SMTP_PASS`); change
 via `flyctl secrets set`.
 
+**Custom domain**: every absolute link the app emails (password reset, on-the-clock, and
+`scripts/send-invites.ts`) is built from the `AUTH_URL` secret, so pointing a domain at the
+site is: `flyctl certs add <domain>` → add the DNS records it prints (A `66.241.125.221`,
+AAAA `2a09:8280:1::126:e527:0`, plus the `_acme-challenge` CNAME) → once
+`flyctl certs check <domain>` is issued, `flyctl secrets set AUTH_URL=https://<domain>`,
+uncomment `[build.args] CANONICAL_HOST` in `fly.toml`, and deploy. `CANONICAL_HOST` is a
+**build arg, not a secret** (`next.config.ts` bakes `redirects()` at build time); it
+308-redirects every other hostname, including `fpfl-fantasy.fly.dev`, to the domain, with
+`/api/health` exempt so Fly's checks stay green. Leave it unset locally.
+
 **The worker is kept scaled to zero to cut cost, and every deploy recreates it** (plus a
 standby). After each `flyctl deploy`, run `flyctl scale count worker=0 -a fpfl-fantasy --yes`
 and confirm with `flyctl scale show`; the destroy occasionally half-fails, so verify rather
