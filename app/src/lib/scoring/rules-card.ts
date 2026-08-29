@@ -1,28 +1,41 @@
 /**
- * Scoring-card display model: a ScoringRules object flattened into grouped,
- * human-readable rows for the shareable /leagues/[slug]/scoring-card view and
- * its copy-as-text export. Base components always render ("off" when 0);
- * advanced/coach/xFP components render only when they actually score, each
- * tagged with the positions that earn it (the resolved scope matrix).
+ * Scoring-card display model: a ScoringRules object flattened into one section
+ * per roster position (QB / RB / WR / TE / COACH) for the shareable
+ * /leagues/[slug]/scoring-card view, the league-settings summary, and the
+ * copy-as-text export. Each section lists every component that position
+ * earns, sub-grouped (Passing / Rushing / Receiving / Separation / Misc);
+ * only components that actually score are rendered — zeroed rules are absent,
+ * and scoped advanced stats appear only under the positions the league's
+ * scope matrix grants them (`AdvancedRules.scope`, see scopeFromRules).
+ *
+ * Mirrors score-stat-line.ts: base stats score whoever records them, the
+ * advanced passing/EPA block is QB-only (PASSING_POSITIONS), the TE premium
+ * replaces the reception value for tight ends, xFP is a per-position
+ * multiplier, and coaching rules only ever apply to COACH rows.
  */
 
-import { scopeFromRules, type ScopeState } from "@/lib/scoring/lab-form";
+import { scopeFromRules } from "@/lib/scoring/lab-form";
 import {
   SCORING_PRESET_OPTIONS,
+  type AdvancedScopeKey,
   type ScopePosition,
   type ScoringRules,
 } from "@/lib/scoring/scoring-systems";
 
+export type CardPosition = ScopePosition | "COACH";
+
 export interface CardRow {
   label: string;
   value: string;
-  /** Positions that earn this component; omitted = follows the section. */
+  /** Sub-heading within a position section (Passing / Rushing / …). */
+  group?: string;
+  /** Legacy per-row position tags; unused by the by-position layout. */
   positions?: ScopePosition[];
 }
 
 export interface CardSection {
   title: string;
-  /** Positions the whole section applies to (shown next to the title). */
+  /** The position this section applies to (rendered as a chip next to the title). */
   positions?: string;
   rows: CardRow[];
 }
@@ -37,6 +50,14 @@ const perYd = (v: number): string => `${pts(v)} / yd`;
 const times = (v: number): string => `× ${n(v)}`;
 const ydsPer = (v: number): string => `1 pt / ${n(v)} yds`;
 
+const POSITION_TITLES: Record<CardPosition, string> = {
+  QB: "Quarterback",
+  RB: "Running back",
+  WR: "Wide receiver",
+  TE: "Tight end",
+  COACH: "Coaching staff",
+};
+
 export function presetLabel(rules: ScoringRules): string {
   const opt = SCORING_PRESET_OPTIONS.find((o) => o.key === rules.preset);
   return opt?.label ?? "Custom";
@@ -45,142 +66,161 @@ export function presetLabel(rules: ScoringRules): string {
 export function scoringCardSections(rules: ScoringRules): CardSection[] {
   const a = rules.advanced;
   const scope = scopeFromRules(rules);
-  const sections: CardSection[] = [];
 
-  // Optional row: include only when the component is on. A scoped stat whose
-  // position list is empty scores nobody — treat it as off.
-  const on = (
-    label: string,
-    value: number | undefined,
-    fmt: (v: number) => string = pts,
-    positions?: ScopePosition[],
-  ): CardRow[] =>
-    value && !(positions && positions.length === 0)
-      ? [{ label, value: fmt(value), positions }]
-      : [];
+  // Optional row: include only when the component is on.
+  const on = (label: string, value: number | undefined, fmt: (v: number) => string = pts): CardRow[] =>
+    value ? [{ label, value: fmt(value) }] : [];
 
-  // Only components that actually contribute points appear on the card —
-  // zeroed base stats (e.g. fp_advanced's passing yards/TD) are simply absent.
-  sections.push({
-    title: "Passing",
-    positions: "QB",
-    rows: [
-      ...on("Passing yards", rules.passYdsPerPoint, ydsPer),
-      ...on("Passing TD", rules.passTd),
-      ...on("Interception", rules.interception),
-      ...on("2-pt pass", rules.pass2pt),
-      ...on("Pass yds 5+ air", a?.deepPassYd, perYd),
-      ...on("Passing 1st down (5+ air)", a?.deepPassFirstDown),
-      ...on("Passing TD (5+ air)", a?.deepPassTd),
-      ...on("Accurate throw", a?.accurateThrow),
-      ...on("Catchable throw", a?.catchableThrow),
-      ...on("Turnover-worthy throw", a?.turnoverWorthyThrow),
-      ...on("Hero throw", a?.heroThrow),
-      ...on("Pass air yards", a?.passAirYd, perYd),
-      ...on("Sack taken", a?.sackTaken),
-      ...on("Incompletion", a?.incompletion),
-      ...on("EPA / dropback", a?.epaPerDropback, times),
-      ...on("EPA total", a?.epaTotal, times),
-    ],
-  });
+  // Scoped advanced family: rows only for positions the scope matrix grants.
+  const sc = (key: AdvancedScopeKey, pos: ScopePosition, rows: CardRow[]): CardRow[] =>
+    scope[key].includes(pos) ? rows : [];
 
-  sections.push({
-    title: "Rushing",
-    rows: [
-      ...on("Rushing yards", rules.rushYdsPerPoint, ydsPer),
-      ...on("Rushing TD", rules.rushTd),
-      ...on("2-pt rush", rules.rush2pt),
-      ...on("Explosive rush (10+ yds)", a?.rushExplosive, pts, scope.explosivePlay),
-      ...on("Rushing MTF", a?.rushMtf, pts, scope.mtf),
-      ...on("Rushing stuff", a?.rushStuff, pts, scope.rushDetail),
-      ...on("Yards before contact", a?.ybcYd, perYd, scope.rushDetail),
-      ...on("Yards after contact", a?.yacoYd, perYd, scope.rushDetail),
-    ],
-  });
+  const grp = (group: string, rows: CardRow[]): CardRow[] => rows.map((r) => ({ ...r, group }));
 
-  const te = rules.tePremiumReception;
-  sections.push({
-    title: "Receiving",
-    rows: [
-      ...on("Reception", rules.reception),
-      ...(te !== undefined && te !== rules.reception
-        ? [{ label: "TE reception (premium)", value: pts(te) }]
-        : []),
+  const passing: CardRow[] = [
+    ...on("Passing yards", rules.passYdsPerPoint, ydsPer),
+    ...on("Passing TD", rules.passTd),
+    ...on("Interception", rules.interception),
+    ...on("2-pt pass", rules.pass2pt),
+    ...on("Pass yds 5+ air", a?.deepPassYd, perYd),
+    ...on("Passing 1st down (5+ air)", a?.deepPassFirstDown),
+    ...on("Passing TD (5+ air)", a?.deepPassTd),
+    ...on("Accurate throw", a?.accurateThrow),
+    ...on("Catchable throw", a?.catchableThrow),
+    ...on("Turnover-worthy throw", a?.turnoverWorthyThrow),
+    ...on("Hero throw", a?.heroThrow),
+    ...on("Pass air yards", a?.passAirYd, perYd),
+    ...on("Sack taken", a?.sackTaken),
+    ...on("Incompletion", a?.incompletion),
+    ...on("EPA / dropback", a?.epaPerDropback, times),
+    ...on("EPA total", a?.epaTotal, times),
+  ];
+
+  const rushing = (pos: ScopePosition): CardRow[] => [
+    ...on("Rushing yards", rules.rushYdsPerPoint, ydsPer),
+    ...on("Rushing TD", rules.rushTd),
+    ...on("2-pt rush", rules.rush2pt),
+    ...sc("explosivePlay", pos, on("Explosive rush (10+ yds)", a?.rushExplosive)),
+    ...sc("mtf", pos, on("Rushing MTF", a?.rushMtf)),
+    ...sc("rushDetail", pos, [
+      ...on("Rushing stuff", a?.rushStuff),
+      ...on("Yards before contact", a?.ybcYd, perYd),
+      ...on("Yards after contact", a?.yacoYd, perYd),
+    ]),
+  ];
+
+  const receiving = (pos: ScopePosition): CardRow[] => {
+    const te = rules.tePremiumReception;
+    const premium = pos === "TE" && te !== undefined && te !== rules.reception;
+    return [
+      ...on(premium ? "Reception (TE premium)" : "Reception", premium ? te : rules.reception),
       ...on("Receiving yards", rules.recYdsPerPoint, ydsPer),
       ...on("Receiving TD", rules.recTd),
       ...on("2-pt catch", rules.rec2pt),
-      ...on("Receiving 1st down", a?.recFirstDown, pts, scope.recFirstDown),
-      ...on("First-read target", a?.recFirstRead, pts, scope.recFirstRead),
-      ...on("Rec air yards", a?.recAirYd, perYd, scope.recAirYd),
-      ...on("Yards after catch", a?.recYacYd, perYd, scope.recYac),
-      ...on("Rec yards after contact", a?.recYacoYd, perYd, scope.recYaco),
-      ...on("Explosive reception (15+ yds)", a?.recExplosive, pts, scope.explosivePlay),
-      ...on("Receiving MTF", a?.recMtf, pts, scope.mtf),
-      ...on("Hero catch", a?.heroCatch, pts, scope.heroCatch),
-      ...on("Drop", a?.drop, pts, scope.drop),
-    ],
+      ...sc("recFirstDown", pos, on("Receiving 1st down", a?.recFirstDown)),
+      ...sc("recFirstRead", pos, on("First-read target", a?.recFirstRead)),
+      ...sc("recAirYd", pos, on("Rec air yards", a?.recAirYd, perYd)),
+      ...sc("recYac", pos, on("Yards after catch", a?.recYacYd, perYd)),
+      ...sc("recYaco", pos, on("Rec yards after contact", a?.recYacoYd, perYd)),
+      ...sc("explosivePlay", pos, on("Explosive reception (15+ yds)", a?.recExplosive)),
+      ...sc("mtf", pos, on("Receiving MTF", a?.recMtf)),
+      ...sc("heroCatch", pos, on("Hero catch", a?.heroCatch)),
+      ...sc("drop", pos, on("Drop", a?.drop)),
+    ];
+  };
+
+  const separation = (pos: ScopePosition): CardRow[] =>
+    sc("separation", pos, [
+      ...on("Separation (per route pt)", a?.sepPoint),
+      ...on("−2 pressed at line", a?.sepM2),
+      ...on("−1 tight", a?.sepM1),
+      ...on("+1 step", a?.sepP1),
+      ...on("+2 open", a?.sepP2),
+      ...on("+3 wide open", a?.sepP3),
+      ...on("+4 coverage bust", a?.sepP4),
+    ]);
+
+  // Weekly yardage bonuses, shown under the positions that plausibly hit them.
+  const BONUS_STATS: Record<ScopePosition, Set<string>> = {
+    QB: new Set(["pass_yds", "rush_yds"]),
+    RB: new Set(["rush_yds", "rec_yds"]),
+    WR: new Set(["rec_yds", "rush_yds"]),
+    TE: new Set(["rec_yds", "rush_yds"]),
+  };
+  const XFP_KEY = { QB: "qb", RB: "rb", WR: "wr", TE: "te" } as const;
+
+  const misc = (pos: ScopePosition): CardRow[] => [
+    ...on("Fumble lost", rules.fumbleLost),
+    ...sc("mtf", pos, on("Missed tackle forced", a?.missedTackleForced)),
+    ...sc("explosivePlay", pos, on("Explosive play (15+ yds)", a?.explosivePlay)),
+    ...rules.bonuses
+      .filter((b) => BONUS_STATS[pos].has(b.stat))
+      .map((b) => ({
+        label: `${b.threshold}+ ${
+          b.stat === "pass_yds" ? "pass" : b.stat === "rush_yds" ? "rush" : "rec"
+        } yds (week)`,
+        value: pts(b.points),
+      })),
+    ...on("Expected fantasy points", rules.xfp?.[XFP_KEY[pos]], times),
+  ];
+
+  const section = (pos: CardPosition, rows: CardRow[]): CardSection => ({
+    title: POSITION_TITLES[pos],
+    positions: pos,
+    rows,
   });
 
-  const sepRows: CardRow[] = [
-    ...on("Separation (per route pt)", a?.sepPoint, pts, scope.separation),
-    ...on("−2 pressed at line", a?.sepM2, pts, scope.separation),
-    ...on("−1 tight", a?.sepM1, pts, scope.separation),
-    ...on("+1 step", a?.sepP1, pts, scope.separation),
-    ...on("+2 open", a?.sepP2, pts, scope.separation),
-    ...on("+3 wide open", a?.sepP3, pts, scope.separation),
-    ...on("+4 coverage bust", a?.sepP4, pts, scope.separation),
+  const sections: CardSection[] = [
+    section("QB", [
+      ...grp("Passing", passing),
+      ...grp("Rushing", rushing("QB")),
+      ...grp("Separation", separation("QB")),
+      ...grp("Misc", misc("QB")),
+    ]),
+    section("RB", [
+      ...grp("Rushing", rushing("RB")),
+      ...grp("Receiving", receiving("RB")),
+      ...grp("Separation", separation("RB")),
+      ...grp("Misc", misc("RB")),
+    ]),
+    section("WR", [
+      ...grp("Receiving", receiving("WR")),
+      ...grp("Rushing", rushing("WR")),
+      ...grp("Separation", separation("WR")),
+      ...grp("Misc", misc("WR")),
+    ]),
+    section("TE", [
+      ...grp("Receiving", receiving("TE")),
+      ...grp("Rushing", rushing("TE")),
+      ...grp("Separation", separation("TE")),
+      ...grp("Misc", misc("TE")),
+    ]),
   ];
-  if (sepRows.length) {
-    sections.push({
-      title: "Separation",
-      positions: scope.separation.join(" · "),
-      rows: sepRows.map((r) => ({ ...r, positions: undefined })),
-    });
-  }
-
-  const miscRows: CardRow[] = [
-    ...on("Fumble lost", rules.fumbleLost),
-    ...on("Missed tackle forced", a?.missedTackleForced, pts, scope.mtf),
-    ...on("Explosive play (15+ yds)", a?.explosivePlay, pts, scope.explosivePlay),
-    ...rules.bonuses.map((b) => ({
-      label: `${b.threshold}+ ${
-        b.stat === "pass_yds" ? "pass" : b.stat === "rush_yds" ? "rush" : "rec"
-      } yds (week)`,
-      value: pts(b.points),
-    })),
-  ];
-  const x = rules.xfp;
-  if (x) {
-    for (const [pos, key] of [["QB", "qb"], ["RB", "rb"], ["WR", "wr"], ["TE", "te"]] as const) {
-      if (x[key]) {
-        miscRows.push({
-          label: "Expected fantasy points",
-          value: times(x[key]),
-          positions: [pos],
-        });
-      }
-    }
-  }
-  if (miscRows.length) sections.push({ title: "Big plays & misc", rows: miscRows });
 
   const c = rules.coaching;
   if (c) {
-    const coachRows: CardRow[] = [
-      ...on("Play-action dropback", c.paDropback),
-      ...on("Dropback w/ motion", c.motionDropback),
-      ...on("4th-down go", c.fourthDownGo),
-      ...on("Run on 2nd & 7+", c.run2ndLong),
-      ...on("Deep shot on 2nd & 1-2", c.deepAtt2ndShort),
-      ...on("Team win", c.win),
-      ...on("30+ points scored", c.score30Bonus),
-    ];
-    if (coachRows.length) {
-      sections.push({ title: "Coaching staff", positions: "COACH", rows: coachRows });
-    }
+    sections.push(
+      section("COACH", [
+        ...on("Play-action dropback", c.paDropback),
+        ...on("Dropback w/ motion", c.motionDropback),
+        ...on("4th-down go", c.fourthDownGo),
+        ...on("Run on 2nd & 7+", c.run2ndLong),
+        ...on("Deep shot on 2nd & 1-2", c.deepAtt2ndShort),
+        ...on("Team win", c.win),
+        ...on("30+ points scored", c.score30Bonus),
+      ]),
+    );
   }
 
-  // A fully zeroed category vanishes rather than rendering an empty panel.
+  // A position with nothing that scores vanishes rather than rendering empty.
   return sections.filter((s) => s.rows.length > 0);
+}
+
+/** Distinct sub-group names in order of first appearance (empty if ungrouped). */
+export function cardGroups(rows: CardRow[]): string[] {
+  const seen: string[] = [];
+  for (const r of rows) if (r.group && !seen.includes(r.group)) seen.push(r.group);
+  return seen;
 }
 
 /** Plain-text rendition for copy/paste into a group chat. */
@@ -193,10 +233,15 @@ export function scoringCardText(
     `${leagueName.toUpperCase()} — SCORING (${presetLabel(rules)}, ${season})`,
   ];
   for (const s of scoringCardSections(rules)) {
-    lines.push("", s.positions ? `${s.title.toUpperCase()} — ${s.positions}` : s.title.toUpperCase());
+    lines.push("", s.positions ? `${s.positions} — ${s.title.toUpperCase()}` : s.title.toUpperCase());
+    const grouped = cardGroups(s.rows).length > 1;
+    let current: string | undefined;
     for (const r of s.rows) {
-      const tag = r.positions?.length ? `  (${r.positions.join("/")})` : "";
-      lines.push(`  ${(r.label + tag).padEnd(38)} ${r.value}`);
+      if (grouped && r.group !== current) {
+        current = r.group;
+        lines.push(`  ${current}`);
+      }
+      lines.push(`  ${(grouped ? "  " : "") + r.label.padEnd(grouped ? 36 : 38)} ${r.value}`);
     }
   }
   lines.push("", "Results post Tuesday 6:00 AM ET · final Thursday noon");

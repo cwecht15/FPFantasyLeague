@@ -13,7 +13,7 @@ import { ActionForm } from "@/components/action-form";
 import { RuleFieldsets } from "@/components/rules-fields";
 import { CopyButton } from "@/components/copy-button";
 import { groupsFromRules } from "@/lib/scoring/lab-form";
-import { presetLabel, scoringCardSections } from "@/lib/scoring/rules-card";
+import { cardGroups, presetLabel, scoringCardSections } from "@/lib/scoring/rules-card";
 import { nextWeeklyEt, WAIVER_DOW, WAIVER_HOUR_ET } from "@/lib/transactions/game-lock";
 
 export default async function SettingsPage({
@@ -200,14 +200,12 @@ export default async function SettingsPage({
                     </td>
                   </tr>
                   {sec.rows.map((row) => (
-                    <tr key={`${sec.title}-${row.label}`}>
+                    <tr key={`${sec.title}-${row.group}-${row.label}`}>
                       <td className="dim">
-                        {row.label}
-                        {row.positions && row.positions.length > 0 && (
-                          <span className="ml-2 text-[10px] text-faint">
-                            {row.positions.join(" · ")}
-                          </span>
+                        {cardGroups(sec.rows).length > 1 && row.group && (
+                          <span className="mr-2 text-[10px] text-faint">{row.group} ·</span>
                         )}
+                        {row.label}
                       </td>
                       <td className="r num">{row.value}</td>
                     </tr>

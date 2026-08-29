@@ -1,4 +1,5 @@
-import type { CardSection } from "@/lib/scoring/rules-card";
+import { Fragment } from "react";
+import { cardGroups, type CardSection } from "@/lib/scoring/rules-card";
 import { SITE_NAME } from "@/lib/brand";
 
 /**
@@ -43,40 +44,48 @@ export function ScoringCardView({
       </header>
 
       <div className="gap-4 md:columns-2">
-        {sections.map((s) => (
-          <div key={s.title} className="panel mb-4 break-inside-avoid">
-            <div className="ptitle !py-2.5">
-              <span className="t !text-[15px]">{s.title}</span>
-              {s.positions && <span className="m">{s.positions}</span>}
+        {sections.map((s) => {
+          // Sub-group headers (Passing / Rushing / …) only when a position
+          // section actually spans more than one group.
+          const grouped = cardGroups(s.rows).length > 1;
+          let current: string | undefined;
+          return (
+            <div key={s.title} className="panel mb-4 break-inside-avoid">
+              <div className="ptitle !py-2.5">
+                <span className="t !text-[15px]">{s.title}</span>
+                {s.positions && <span className={`pos ${s.positions}`}>{s.positions}</span>}
+              </div>
+              <table className="tbl">
+                <tbody>
+                  {s.rows.map((r, i) => {
+                    const head = grouped && r.group !== current;
+                    if (head) current = r.group;
+                    return (
+                      <Fragment key={`${r.label}-${i}`}>
+                        {head && (
+                          <tr>
+                            <td colSpan={2} className="label !pb-1 !pt-3 !text-[10px]">
+                              {r.group}
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td className="dim">{r.label}</td>
+                          <td className="r num whitespace-nowrap">{r.value}</td>
+                        </tr>
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <table className="tbl">
-              <tbody>
-                {s.rows.map((r, i) => (
-                  <tr key={`${r.label}-${i}`}>
-                    <td className="dim">
-                      {r.label}
-                      {r.positions && (
-                        <span className="ml-2 inline-flex gap-1 align-[1px]">
-                          {r.positions.map((p) => (
-                            <span key={p} className={`pos ${p} !min-w-0 !px-1 !text-[9px]`}>
-                              {p}
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </td>
-                    <td className="r num whitespace-nowrap">{r.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <p className="note mt-1">
         Scored from post-game charting — results post Tuesday 6:00 AM ET, final Thursday
-        noon. Advanced stats count only for the tagged positions.
+        noon. Each position lists only the components it earns.
       </p>
     </div>
   );
