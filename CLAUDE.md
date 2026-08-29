@@ -9,7 +9,8 @@ post-game NFL charting data. Two parts:
 
 - `app/` — Next.js 16 App Router + React 19 + Tailwind v4 + Drizzle + Auth.js v5. Deployed on
   Fly.io as two process groups (`app` web + `worker` background) sharing one image, against a
-  Neon Postgres. **Live at https://fpfl-fantasy.fly.dev** (Fly app `fpfl-fantasy`).
+  Neon Postgres. **Live at https://scottbearbowl.com** (Fly app `fpfl-fantasy`; the old
+  `fpfl-fantasy.fly.dev` host 308-redirects there — see *Custom domain* below).
 - `tools/scoring/` — local Python pipeline (psycopg2, pandas) that reads the **NFL_Data**
   Postgres on this machine (READ-ONLY) and pushes normalized per-player-week stat lines to the
   app DB. Runs via Windows Task Scheduler (4 weekly tasks named "FPFantasyLeague Push *").
@@ -145,7 +146,8 @@ Deploy: `flyctl deploy --remote-only --yes` from `app/`. Secrets are already set
 (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `EMAIL_FROM`, `SMTP_USER`, `SMTP_PASS`); change
 via `flyctl secrets set`.
 
-**Custom domain**: every absolute link the app emails (password reset, on-the-clock, and
+**Custom domain** (`scottbearbowl.com`, Cloudflare Registrar + Cloudflare DNS with the proxy
+**off** — grey cloud — on every record; live since 2026-08-29): every absolute link the app emails (password reset, on-the-clock, and
 `scripts/send-invites.ts`) is built from the `AUTH_URL` secret, so pointing a domain at the
 site is: `flyctl certs add <domain>` → add the DNS records it prints (A `66.241.125.221`,
 AAAA `2a09:8280:1::126:e527:0`, plus the `_acme-challenge` CNAME) → once
