@@ -16,7 +16,7 @@ import { ToastHost } from "@/components/toast";
 
 /**
  * Shareable scoring card — the league's active scoring rules on a single
- * chrome-free page (no nav/ticker; this route sits outside the (app) group)
+ * chrome-free page (no nav; this route sits outside the (app) group)
  * sized for a screenshot, with copy-as-text and print/PDF export.
  */
 export default async function ScoringCardPage({

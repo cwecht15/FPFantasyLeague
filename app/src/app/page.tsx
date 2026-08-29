@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SITE_NAME } from "@/lib/brand";
 
-const TICKER = `${SITE_NAME.toUpperCase()} · CHARTING-SCORED · SLOW DRAFT, NO CLOCK · DRAFT THE COACHES · TOP 6 BRACKET, WEEKS 15–17 · `;
-
 const FEATURES = [
   {
     k: "01",
@@ -78,13 +76,6 @@ export default async function Home() {
             </Link>
           </div>
         </section>
-      </div>
-
-      <div className="ticker" aria-hidden>
-        <div className="ticker-track">
-          {TICKER.repeat(4)}
-          {TICKER.repeat(4)}
-        </div>
       </div>
 
       <section className="mx-auto grid w-full max-w-5xl gap-px bg-line px-0 sm:grid-cols-2 lg:grid-cols-4">
