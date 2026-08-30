@@ -56,7 +56,7 @@ export function AuthForm({
           <>
             New here?{" "}
             <Link href="/signup" className="linkish">
-              Create an account
+              Join with your invite
             </Link>
             {" · "}
             <Link href="/forgot-password" className="linkish">

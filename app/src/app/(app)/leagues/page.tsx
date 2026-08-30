@@ -23,7 +23,8 @@ export default async function LeaguesPage() {
             Join your league
           </h1>
           <div className="sub">
-            Paste the invite code from your league admin — or ask them to assign you directly.
+            Paste the invite code — it&apos;s the last part of the join link in your invite email
+            (…/join/<span className="code">code</span>) — or ask your league admin to assign you.
           </div>
         </div>
       </header>

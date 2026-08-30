@@ -69,7 +69,7 @@ export default async function Home() {
               href="/signup"
               className="btn-flame rounded-md px-7 py-3 text-sm uppercase tracking-wide"
             >
-              Create account
+              Join with your invite
             </Link>
             <Link href="/login" className="btn-ghost rounded-md px-7 py-3 text-sm font-bold">
               Sign in
