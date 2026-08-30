@@ -133,6 +133,10 @@ suite; run the relevant one after touching its domain:
   including mid-draft (updates config, the live draft row, and the current pick's deadline)
 - `set-playoff-mode.ts <slug> <bracket|championship> [teams] [startWeek]` — switch a league
   between in-league bracket playoffs and the default championship-sprint-only mode
+- `fresh-start.ts --name "<league>" [--season] [--teams] [--preset] [--keep-users] [--prod] [--yes]`
+  — wipe every league and every non-admin user, then create one league with no pick clock
+  (dry run unless `--yes`). Used 2026-08-30 to retire the mock league and create
+  **Scott Bear Bowl 2026** (`scott-bear-bowl-2026-5e71b3`, the Season 1 league on prod).
 - `dev-email-test.ts <to>` — verify the configured mail transport end to end (auth + a real
   send, reports accepted/rejected); use it instead of inferring from missing notifications
 
