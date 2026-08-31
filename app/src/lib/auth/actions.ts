@@ -103,7 +103,8 @@ export async function login(
 
 const joinSignupSchema = signupSchema.extend({
   teamName: z.string().trim().min(2, "Team name must be at least 2 characters").max(40),
-  inviteCode: z.string().trim().min(4).max(40),
+  // Codes are lowercase hex; phones auto-capitalize hand-typed ones.
+  inviteCode: z.string().trim().toLowerCase().min(4).max(40),
 });
 
 export async function signupAndJoin(

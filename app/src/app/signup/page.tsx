@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AuthStage } from "@/components/auth-stage";
-import { SITE_NAME } from "@/lib/brand";
+import { SITE_NAME, SITE_URL } from "@/lib/brand";
 
 export const metadata = { title: "Join with your invite" };
 
@@ -21,7 +21,7 @@ export default async function SignupPage() {
     "use server";
     // Accept the full link, a trailing-slash link, or the bare code.
     const raw = String(formData.get("code") ?? "").trim();
-    const code = raw.split(/[/\s?#]+/).filter(Boolean).pop() ?? "";
+    const code = (raw.split(/[/\s?#]+/).filter(Boolean).pop() ?? "").toLowerCase();
     redirect(code ? `/join/${encodeURIComponent(code)}` : "/signup");
   }
 
@@ -39,8 +39,10 @@ export default async function SignupPage() {
             name="code"
             required
             className="input code"
-            placeholder="https://scottbearbowl.com/join/…"
+            placeholder={`${SITE_URL}/join/…`}
             autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
           />
         </div>
         <button type="submit" className="btn pri" style={{ width: "100%" }}>

@@ -23,7 +23,7 @@ export default async function JoinPage({
   const [league] = await db
     .select()
     .from(leagues)
-    .where(eq(leagues.inviteCode, code.trim()))
+    .where(eq(leagues.inviteCode, code.trim().toLowerCase()))
     .limit(1);
 
   if (!league || league.isDemo || (league.status !== "setup" && league.status !== "drafting")) {

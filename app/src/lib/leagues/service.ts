@@ -173,7 +173,7 @@ export async function joinLeague(opts: {
   const [league] = await db
     .select()
     .from(leagues)
-    .where(eq(leagues.inviteCode, opts.inviteCode.trim()))
+    .where(eq(leagues.inviteCode, opts.inviteCode.trim().toLowerCase()))
     .limit(1);
   if (!league) return { error: "No league found for that invite code" };
   if (league.status !== "setup" && league.status !== "drafting") {
