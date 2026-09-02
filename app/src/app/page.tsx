@@ -75,12 +75,9 @@ export default async function Home() {
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
-              href="/signup"
+              href="/login"
               className="btn-flame rounded-md px-7 py-3 text-sm uppercase tracking-wide"
             >
-              Join with your invite
-            </Link>
-            <Link href="/login" className="btn-ghost rounded-md px-7 py-3 text-sm font-bold">
               Sign in
             </Link>
           </div>

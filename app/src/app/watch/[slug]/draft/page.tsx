@@ -8,7 +8,7 @@ import { eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { players, teams } from "@/lib/db/schema";
+import { players, teams, users } from "@/lib/db/schema";
 import { getPublicLeague } from "@/lib/leagues/service";
 import { getDraft, getDraftBoard } from "@/lib/draft/service";
 import { PollRefresher } from "@/components/draft-client";
@@ -38,10 +38,25 @@ export default async function WatchDraftPage({
   }
 
   const board = await getDraftBoard(draft.id);
-  const teamRows = await db
-    .select({ id: teams.id, name: teams.name, draftPosition: teams.draftPosition })
-    .from(teams)
-    .where(eq(teams.leagueId, pub.league.id));
+  // Followers know the people, not the team names — label columns and picks
+  // by manager display name (team name as fallback for unclaimed teams).
+  const teamRows = (
+    await db
+      .select({
+        id: teams.id,
+        teamName: teams.name,
+        draftPosition: teams.draftPosition,
+        manager: users.displayName,
+        managerName: users.name,
+      })
+      .from(teams)
+      .leftJoin(users, eq(teams.ownerUserId, users.id))
+      .where(eq(teams.leagueId, pub.league.id))
+  ).map((t) => ({
+    id: t.id,
+    name: t.manager ?? t.managerName ?? t.teamName,
+    draftPosition: t.draftPosition,
+  }));
   const teamById = new Map(teamRows.map((t) => [t.id, t]));
   const orderedTeams = [...teamRows].sort(
     (a, b) => (a.draftPosition ?? 99) - (b.draftPosition ?? 99),
