@@ -260,6 +260,76 @@ export async function fillEmptyLineup(
   }
 }
 
+/** Read-only lineup view for anonymous spectator pages. Unlike getLineupView
+ *  it NEVER writes: no ensureLineup/fillEmptyLineup — if the lineup (or a
+ *  template slot) doesn't exist yet, the missing slots render empty instead of
+ *  being materialized. Anonymous GETs must not touch the database. */
+export async function getLineupViewReadOnly(
+  leagueId: number,
+  teamId: number,
+  season: number,
+  week: number,
+  template: RosterTemplate,
+): Promise<{ slots: SlotView[] }> {
+  const [lineup] = await db
+    .select({ id: lineups.id })
+    .from(lineups)
+    .where(and(eq(lineups.teamId, teamId), eq(lineups.season, season), eq(lineups.week, week)))
+    .limit(1);
+
+  const slotRows = lineup
+    ? await db
+        .select({
+          slotId: lineupSlots.id,
+          slot: lineupSlots.slot,
+          slotIndex: lineupSlots.slotIndex,
+          gsisId: lineupSlots.gsisId,
+          playerName: players.displayName,
+          position: players.position,
+          nflTeam: players.nflTeam,
+        })
+        .from(lineupSlots)
+        .leftJoin(players, eq(lineupSlots.gsisId, players.gsisId))
+        .where(eq(lineupSlots.lineupId, lineup.id))
+        .orderBy(lineupSlots.slot, lineupSlots.slotIndex)
+    : [];
+
+  // Pad to the template so both sides of a matchup always show every slot.
+  const have = new Set(slotRows.map((s) => `${s.slot}#${s.slotIndex}`));
+  const padded = [...slotRows];
+  let synthetic = -1;
+  for (const def of template.slots) {
+    for (let i = 0; i < def.count; i++) {
+      if (have.has(`${def.slot}#${i}`)) continue;
+      padded.push({
+        slotId: synthetic--,
+        slot: def.slot,
+        slotIndex: i,
+        gsisId: null,
+        playerName: null,
+        position: null,
+        nflTeam: null,
+      });
+    }
+  }
+
+  padded.sort((a, b) => a.slot.localeCompare(b.slot) || a.slotIndex - b.slotIndex);
+
+  const ids = padded.map((s) => s.gsisId).filter((x): x is string => !!x);
+  const kicks = await kickoffMap(ids, season, week);
+  const pts = await pointsMap(leagueId, ids, season, week);
+  const slots: SlotView[] = padded.map((s) => {
+    const kickoffAt = s.gsisId ? (kicks.get(s.gsisId) ?? null) : null;
+    return {
+      ...s,
+      kickoffAt,
+      locked: isLocked(kickoffAt),
+      points: s.gsisId ? (pts.get(s.gsisId) ?? null) : null,
+    };
+  });
+  return { slots };
+}
+
 /** Full lineup view + the team's rostered players for the editor. */
 export async function getLineupView(
   leagueId: number,

@@ -100,6 +100,17 @@ export function isCommissioner(member: LeagueMember): boolean {
   return member.role === "commissioner";
 }
 
+/** Anonymous read access for the /watch spectator pages: only leagues whose
+ *  `visibility` is "public" (never demo leagues) are viewable without a
+ *  session. Everything else 404s — the flag is flipped by
+ *  scripts/set-league-visibility.ts. */
+export async function getPublicLeague(slug: string): Promise<{ league: League } | null> {
+  const league = await getLeagueBySlug(slug);
+  if (!league) return null;
+  if (league.visibility !== "public" || league.isDemo) return null;
+  return { league };
+}
+
 export async function getSettings(leagueId: number): Promise<LeagueSettingsRow> {
   const [row] = await db
     .select()

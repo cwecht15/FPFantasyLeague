@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { leagues } from "@/lib/db/schema";
 import { SITE_NAME } from "@/lib/brand";
 
 const FEATURES = [
@@ -32,6 +35,12 @@ export default async function Home() {
   // join screen / admin list) so this page never asks them to create an account.
   const session = await auth();
   if (session?.user) redirect("/leagues");
+
+  // Public leagues get anonymous spectator pages — surface them to visitors.
+  const publicLeagues = await db
+    .select({ slug: leagues.slug, name: leagues.name })
+    .from(leagues)
+    .where(and(eq(leagues.visibility, "public"), eq(leagues.isDemo, false)));
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -75,6 +84,20 @@ export default async function Home() {
               Sign in
             </Link>
           </div>
+          {publicLeagues.length > 0 && (
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <span className="label">No team? Follow along:</span>
+              {publicLeagues.map((l) => (
+                <Link
+                  key={l.slug}
+                  href={`/watch/${l.slug}`}
+                  className="btn-ghost rounded-md px-4 py-2 text-sm font-bold"
+                >
+                  {l.name} →
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
