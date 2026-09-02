@@ -35,6 +35,8 @@ const TABS = [
   { href: "draft", label: "Draft" },
   { href: "matchups", label: "Matchups" },
   { href: "standings", label: "Standings" },
+  { href: "leaders", label: "Leaders" },
+  { href: "scoring", label: "Scoring" },
 ];
 
 export default async function WatchLayout({
