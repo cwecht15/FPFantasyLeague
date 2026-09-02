@@ -1,0 +1,531 @@
+<title>Scott Bear Bowl Draft Guide</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,800&family=Mulish:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root {
+    --paper: #F0F0F0;
+    --panel: #FAFAF9;
+    --ink: #111111;
+    --ink2: #55554F;
+    --line: #D6D6D1;
+    --tint: #E7E7E2;
+    --red: #CC3333;
+    --red-ink: #B22B2B;
+    --on-red: #FFFFFF;
+    --bar: #C9C9C4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #111111;
+      --panel: #191918;
+      --ink: #F0F0F0;
+      --ink2: #A5A5A0;
+      --line: #2E2E2B;
+      --tint: #222220;
+      --red: #CC3333;
+      --red-ink: #E86A5E;
+      --on-red: #FFFFFF;
+      --bar: #3A3A36;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #111111;
+    --panel: #191918;
+    --ink: #F0F0F0;
+    --ink2: #A5A5A0;
+    --line: #2E2E2B;
+    --tint: #222220;
+    --red: #CC3333;
+    --red-ink: #E86A5E;
+    --on-red: #FFFFFF;
+    --bar: #3A3A36;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Mulish, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0 16px 80px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  .display, h1, h2, h3 {
+    font-family: Kanit, "Arial Narrow", sans-serif;
+    font-style: italic;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .01em;
+    line-height: 1.05;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .mono { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  header { padding: 44px 0 20px; border-bottom: 3px solid var(--ink); }
+  .eyebrow {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--red-ink); font-weight: 700; margin-bottom: 8px;
+  }
+  h1 { font-size: clamp(42px, 7vw, 78px); }
+  h1 .yr { color: var(--red); }
+  .subhead { color: var(--ink2); max-width: 68ch; margin-top: 12px; }
+  .metaline { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: var(--ink2); }
+  .metaline b { color: var(--ink); font-weight: 700; }
+
+  section { margin-top: 42px; }
+  h2 { font-size: 26px; border-left: 6px solid var(--red); padding-left: 12px; margin-bottom: 4px; }
+  .sectionnote { color: var(--ink2); margin: 6px 0 16px; max-width: 78ch; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; }
+  .card h3 { font-size: 17px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .card ul { list-style: none; margin: 0; padding: 0; }
+  .card li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0;
+    border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .card li:last-child { border-bottom: 0; }
+  .card li .v { font-family: "JetBrains Mono", Consolas, monospace; font-weight: 700; white-space: nowrap; }
+  .card li .v.neg { color: var(--red-ink); }
+
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .note { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--red); padding: 14px 16px; }
+  .note h3 { font-size: 15px; margin-bottom: 6px; }
+  .note p { margin: 0; font-size: 13.5px; color: var(--ink2); }
+  .note p b { color: var(--ink); }
+
+  .pos {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; font-weight: 700;
+    min-width: 44px; padding: 1px 6px; letter-spacing: .06em;
+  }
+  .pos.QB { background: var(--red); color: var(--on-red); }
+  .pos.RB { background: var(--ink); color: var(--paper); }
+  .pos.WR { border: 1.5px solid var(--ink); color: var(--ink); }
+  .pos.TE { background: var(--tint); border: 1px solid var(--line); color: var(--ink); }
+  .pos.COACH { border: 1.5px dashed var(--ink); color: var(--ink); }
+
+  .badge {
+    display: inline-block; font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px; font-weight: 700; padding: 0 5px; margin-left: 6px;
+    border: 1px solid var(--red-ink); color: var(--red-ink); vertical-align: 1px;
+  }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  .chip {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 700;
+    letter-spacing: .08em; padding: 5px 14px; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); color: var(--ink2);
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+  .tblwrap { overflow-x: auto; border: 1px solid var(--line); background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  thead th {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink2);
+    padding: 9px 10px; border-bottom: 2px solid var(--ink);
+    text-align: right; white-space: nowrap; cursor: pointer; user-select: none;
+    position: sticky; top: 0; background: var(--panel);
+  }
+  thead th.txt { text-align: left; }
+  thead th[data-sorted] { color: var(--red-ink); }
+  tbody td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  tbody td.txt { text-align: left; }
+  tbody td.num { font-family: "JetBrains Mono", Consolas, monospace; }
+  tbody tr:hover { background: var(--tint); }
+  tbody tr.t1 td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  td.strong { font-weight: 800; }
+  .playername { font-weight: 600; }
+  .teamcode { color: var(--ink2); font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; }
+  .vorbar { position: relative; min-width: 110px; }
+  .vorbar .fill { position: absolute; left: 0; top: 20%; bottom: 20%; background: var(--bar); z-index: 0; }
+  .vorbar span { position: relative; z-index: 1; }
+  .dim { color: var(--ink2); }
+  .up { color: var(--red-ink); font-weight: 700; }
+
+  .tkbtn { width: 16px; height: 16px; padding: 0; border: 1.5px solid var(--ink2); border-radius: 50%;
+    background: transparent; cursor: pointer; display: inline-block; vertical-align: middle; }
+  .tkbtn:hover { border-color: var(--red); }
+  .tkbtn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  tr.taken .tkbtn { background: var(--red); border-color: var(--red); }
+  tr.taken td { color: var(--ink2); }
+  tr.taken .playername { text-decoration: line-through; text-decoration-color: var(--red-ink);
+    font-weight: 400; color: var(--ink2); }
+  .pickno { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10px; color: var(--ink2); margin-left: 6px; }
+  .trackerline { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 2px 0 10px;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px; color: var(--ink2); }
+  .trackerline b { color: var(--ink); }
+
+  footer { margin-top: 56px; border-top: 3px solid var(--ink); padding-top: 16px;
+    font-size: 12.5px; color: var(--ink2); }
+  footer p { max-width: 88ch; }
+
+  @media print {
+    :root { --paper:#FFF; --panel:#FFF; --ink:#111; --ink2:#444; --line:#BBB; --tint:#EEE; --bar:#DDD; --red:#CC3333; --red-ink:#B22B2B; }
+    body { padding: 0; font-size: 11px; }
+    .filters { display: none; }
+    thead th { position: static; }
+    section { break-inside: avoid-page; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">The Scott Bear Bowl &middot; Season 1 &middot; 12 Teams</div>
+    <h1>Draft Guide <span class="yr">&rsquo;26</span></h1>
+    <p class="subhead">Every player projected under this league&rsquo;s actual scoring &mdash; not PPR.
+      Yards and touchdowns are worth nothing here: points come from throw quality, separation,
+      broken tackles, first reads, and playcalling. Draft accordingly.</p>
+    <div class="metaline" id="metaline"></div>
+  </header>
+
+  <section>
+    <h2>How this league scores</h2>
+    <p class="sectionnote">Pulled live from the league settings. Only components that actually score are shown.
+      Standard stats (yards, TDs, receptions, INTs) are all worth <b>zero</b>.</p>
+    <div class="cards" id="rulecards"></div>
+  </section>
+
+  <section>
+    <h2>Read this first</h2>
+    <div class="notes" id="notes"></div>
+  </section>
+
+  <section>
+    <h2>Overall board</h2>
+    <p class="sectionnote">Ranked by value over replacement (VOR) for the house roster
+      (QB / RB&times;2 / WR&times;2 / TE / FLEX / COACH + 4 bench). &Delta;ADP compares public PPR ADP with
+      this board &mdash; positive means the market will let you have him later. Click a column to sort.</p>
+    <div class="filters" id="posfilters"></div>
+    <div class="trackerline" id="tracker"></div>
+    <div class="tblwrap"><table id="board"></table></div>
+  </section>
+
+  <div id="possections"></div>
+
+  <footer id="method"></footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+const $ = (sel, el) => (el || document).querySelector(sel);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = (v, nd) => v == null ? "—" : Number(v).toFixed(nd == null ? 1 : nd);
+const P = DATA.players;
+const byPos = p => P.filter(x => x.p === p);
+
+/* ---------- draft tracker (shared live via the db capability when the page
+   is open on claude.ai; falls back to this browser's storage) ---------- */
+const baked = (DATA.draft && DATA.draft.taken) || {};
+let manual = {};
+let dbDoc = null;
+const rerenders = [];
+const rerenderAll = () => rerenders.forEach(fn => fn());
+const takenInfo = id => baked[id] || manual[id] || null;
+const isTaken = id => !!takenInfo(id);
+try { manual = JSON.parse(localStorage.getItem("sbb26-taken") || "{}"); } catch (e) {}
+function persist() {
+  if (dbDoc) dbDoc.set({ taken: manual, t: Date.now() }).catch(() => {});
+  else { try { localStorage.setItem("sbb26-taken", JSON.stringify(manual)); } catch (e) {} }
+}
+function toggleTaken(id) {
+  if (baked[id]) return; // real league picks can't be un-drafted here
+  if (manual[id]) delete manual[id]; else manual[id] = { pick: true };
+  rerenderAll(); updateTracker(); persist();
+}
+function updateTracker() {
+  const n = P.filter(x => isTaken(x.id)).length;
+  const el = $("#tracker");
+  if (el) el.innerHTML =
+    `<span><b>${n}</b> DRAFTED</span>` +
+    (DATA.draft && DATA.draft.synced ? `<span>LEAGUE SYNC <b>${esc(DATA.draft.synced)}</b></span>` : "") +
+    `<span>${dbDoc ? "TAP THE DOT TO MARK A PICK — SHARED LIVE ACROSS OPEN VIEWS" : "TAP THE DOT TO MARK A PICK (SAVED IN THIS BROWSER)"}</span>`;
+}
+if (window.claude && window.claude.use) {
+  window.claude.use("db").then(db => {
+    if (!db) return;
+    dbDoc = db.doc("draft/board");
+    dbDoc.onSnapshot(snap => {
+      const d = snap.data();
+      manual = (d && d.taken) || {};
+      rerenderAll(); updateTracker();
+    }, () => {});
+    updateTracker();
+  }).catch(() => {});
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".tkbtn");
+  if (b) toggleTaken(b.dataset.id);
+});
+
+/* ---------- masthead meta ---------- */
+$("#metaline").innerHTML =
+  `<span>GENERATED <b>${esc(DATA.generated)}</b></span>` +
+  `<span>SCORING <b>LIVE LEAGUE RULES</b></span>` +
+  `<span>PLAYERS <b>${P.filter(x=>x.p!=="COACH").length}</b> + <b>32</b> COACHES</span>` +
+  `<span>REPLACEMENT ${Object.entries(DATA.baselines).map(([p,b])=>`${p}${b.rank}`).join(" / ")}</span>`;
+
+/* ---------- scoring cards ---------- */
+const R = DATA.rules, A = R.advanced, C = R.coaching;
+const ruleCards = [
+  ["QB", [
+    ["Accurate throw", A.accurateThrow], ["Catchable throw", A.catchableThrow],
+    ["Hero throw", A.heroThrow], ["Turnover-worthy throw", A.turnoverWorthyThrow],
+    ["Incompletion", A.incompletion], ["Sack taken", A.sackTaken],
+  ]],
+  ["RB", [
+    ["Missed tackle forced", A.missedTackleForced],
+    ["Rush YACO, per yd", A.yacoYd], ["Rec YACO, per yd", A.recYacoYd],
+    ["Explosive rush (10+)", A.rushExplosive], ["Explosive catch (15+)", A.recExplosive],
+  ]],
+  ["WR", [
+    ["Sep grade +1/+2/+3", `${A.sepP1}/${A.sepP2}/${A.sepP3}`],
+    ["Sep grade −1/−2", `${A.sepM1}/${A.sepM2}`],
+    ["Receiving first down", A.recFirstDown],
+    ["Hero catch", A.heroCatch], ["Drop", A.drop],
+  ]],
+  ["TE", [
+    ["First-read target", A.recFirstRead], ["Drop", A.drop],
+  ]],
+  ["COACH", [
+    ["Play-action dropback", C.paDropback], ["Motion dropback", C.motionDropback],
+    ["4th-down go", C.fourthDownGo], ["Run on 2nd &amp; 7+", C.run2ndLong],
+    ["Deep shot on 2nd &amp; short", C.deepAtt2ndShort],
+    ["Team win", C.win], ["30+ points scored", C.score30Bonus],
+  ]],
+];
+$("#rulecards").innerHTML = ruleCards.map(([pos, rows]) => `
+  <div class="card"><h3><span class="pos ${pos}">${pos}</span></h3><ul>` +
+  rows.map(([label, v]) => {
+    const raw = typeof v === "number" ? (v > 0 ? "+" + v : String(v)) : v;
+    const neg = String(raw).trim().startsWith("-") || String(raw).includes("−");
+    return `<li><span>${label}</span><span class="v${neg ? " neg" : ""}">${esc(String(raw)).replace(/-/g,"−")}</span></li>`;
+  }).join("") + `</ul></div>`).join("");
+
+/* ---------- strategy notes (computed) ---------- */
+function notes() {
+  const out = [];
+  const skill = P.filter(x => x.p !== "COACH");
+  const withAdp = skill.filter(x => x.adp != null && x.r <= 140);
+  const values = withAdp.filter(x => x.adp - x.r >= 12).sort((a,b) => (b.adp-b.r)-(a.adp-a.r)).slice(0,5);
+  const fades = withAdp.filter(x => x.adp <= 90 && x.r - x.adp >= 15).sort((a,b) => (b.r-b.adp)-(a.r-a.adp)).slice(0,5);
+  if (values.length) out.push(["Market gifts",
+    `PPR ADP badly underprices this scoring. Biggest steals: ` +
+    values.map(x => `<b>${esc(x.n)}</b> (board #${x.r}, ADP ${fmt(x.adp,0)})`).join(", ") + `.`]);
+  if (fades.length) out.push(["Let someone else pay",
+    `Big PPR names this scoring doesn't reward: ` +
+    fades.map(x => `<b>${esc(x.n)}</b> (ADP ${fmt(x.adp,0)}, board #${x.r})`).join(", ") + `.`]);
+
+  const qb1 = byPos("QB")[0], te1 = byPos("TE")[0];
+  if (qb1) out.push(["Quarterbacks are throw quality",
+    `No points for yards or passing TDs — a QB is his accuracy, hero throws, and sack avoidance on volume. ` +
+    `<b>${esc(qb1.n)}</b> projects to ${fmt(qb1.pts,0)} (QB13 replacement: ${fmt(DATA.baselines.QB.points,0)}). ` +
+    `Rushing QBs get <b>zero</b> rushing points here.`]);
+  if (te1) out.push(["TEs are first reads",
+    `A TE scores ${fmt(A.recFirstRead,1)} per first-read target and little else — target hogs in their offense's plan. ` +
+    `<b>${esc(te1.n)}</b> projects to ${fmt(te1.pts,0)}, inside the top ${te1.r} overall.`]);
+
+  const c = byPos("COACH");
+  if (c.length) {
+    const c1 = c[0], last = c[c.length-1];
+    out.push(["The COACH slot",
+      `Spread is real: <b>${esc(c1.n)}</b> ${fmt(c1.pts,0)} down to ${esc(last.n)} ${fmt(last.pts,0)}. ` +
+      `Aggressive 4th-down teams (+${fmt(C.fourthDownGo,0)} each) win the slot; running on 2nd &amp; long is taxed ${fmt(C.run2ndLong,0)}/play. ` +
+      `Only 32 exist and byes force streaming — top coaches are worth a mid-round pick, not an afterthought.`]);
+    const ns = c.filter(x => x.ctx && x.ctx.ns).length;
+    if (ns) out.push(["New playcallers",
+      `${ns} of 32 teams have a new primary playcaller for 2026 (marked <span class="badge">NEW PC</span> below). ` +
+      `Their scheme rates are regressed toward league average — wider error bars in both directions.`]);
+  }
+  const rks = skill.filter(x => x.rk && x.r <= 100).slice(0, 4);
+  if (rks.length) out.push(["Rookies",
+    `Rookie rates come from how 2021–2025 rookies at the same draft capital actually charted. ` +
+    `Top-100 rookies: ` + rks.map(x => `<b>${esc(x.n)}</b> (#${x.r})`).join(", ") + `.`]);
+  return out;
+}
+$("#notes").innerHTML = notes().map(([h, body]) =>
+  `<div class="note"><h3>${h}</h3><p>${body}</p></div>`).join("");
+
+/* ---------- generic sortable table ---------- */
+function renderTable(el, cols, rows, state) {
+  const arrow = c => state.key === c.key ? (state.dir < 0 ? " ▾" : " ▴") : "";
+  el.innerHTML = "<thead><tr>" + cols.map(c =>
+    `<th class="${c.txt ? "txt" : ""}" data-key="${c.key}"${state.key===c.key?' data-sorted=""':""}>${c.h}${arrow(c)}</th>`
+  ).join("") + "</tr></thead><tbody>" + rows.map(r => {
+    const cls = [r.tier === 1 ? "t1" : "", isTaken(r.id) ? "taken" : ""].filter(Boolean).join(" ");
+    return "<tr" + (cls ? ` class="${cls}"` : "") + ">" + cols.map(c => c.cell(r)).join("") + "</tr>";
+  }).join("") + "</tbody>";
+  el.querySelectorAll("th").forEach(th => th.onclick = () => {
+    const key = th.dataset.key;
+    state.dir = state.key === key ? -state.dir : -1;
+    state.key = key;
+    state.rerender();
+  });
+}
+const td  = (v, cls) => `<td class="${cls||""}">${v == null ? "—" : v}</td>`;
+const num = (v, nd, cls) => td(v == null ? null : Number(v).toFixed(nd == null ? 1 : nd), "num " + (cls||""));
+const nameCell = r => {
+  const ti = takenInfo(r.id);
+  return td(`<span class="playername">${esc(r.n)}</span>` +
+    (r.rk ? '<span class="badge">R</span>' : "") +
+    (r.ctx && r.ctx.ns ? '<span class="badge">NEW PC</span>' : "") +
+    (ti && ti.pick && ti.pick !== true ? `<span class="pickno">P${ti.pick}</span>` : ""), "txt");
+};
+const tkCell = r => td(`<button class="tkbtn" data-id="${esc(r.id)}" aria-label="toggle drafted: ${esc(r.n)}"></button>`, "txt");
+const posCell = r => td(`<span class="pos ${r.p}">${r.p}${r.pr}</span>`, "txt");
+
+/* ---------- overall board ---------- */
+const maxVor = Math.max(...P.map(x => x.vor || 0));
+const boardCols = [
+  { key:"tk",  h:"",       txt:1, cell:tkCell },
+  { key:"r",   h:"#",      cell:r => num(r.r,0,"strong") },
+  { key:"n",   h:"Player", txt:1, cell:nameCell },
+  { key:"p",   h:"Pos",    txt:1, cell:posCell },
+  { key:"t",   h:"Team",   txt:1, cell:r => td(`<span class="teamcode">${esc(r.t)}</span>`, "txt") },
+  { key:"tier",h:"Tier",   cell:r => num(r.tier,0,"dim") },
+  { key:"pts", h:"Proj",   cell:r => num(r.pts,1,"strong") },
+  { key:"ppg", h:"PPG",    cell:r => num(r.ppg,2) },
+  { key:"vor", h:"VOR",    cell:r => `<td class="num vorbar"><div class="fill" style="width:${Math.max(0, (r.vor||0)/maxVor*100)}%"></div><span>${fmt(r.vor)}</span></td>` },
+  { key:"adp", h:"ADP",    cell:r => num(r.adp,1,"dim") },
+  { key:"dlt", h:"ΔADP", cell:r => r.adp == null ? td(null) : num(r.adp - r.r, 0, (r.adp - r.r) >= 12 ? "up" : "dim") },
+];
+const boardState = { key:"r", dir:1, pos:"ALL" };
+boardState.rerender = () => {
+  let rows = boardState.pos === "ALL" ? P.slice() : byPos(boardState.pos);
+  if (boardState.hideTaken) rows = rows.filter(x => !isTaken(x.id));
+  const k = boardState.key;
+  rows.sort((a,b) => {
+    const get = x => k === "dlt" ? (x.adp == null ? null : x.adp - x.r)
+      : k === "tk" ? (isTaken(x.id) ? 1 : 0) : x[k];
+    const av = get(a), bv = get(b);
+    if (av == null) return 1; if (bv == null) return -1;
+    return (av < bv ? -1 : av > bv ? 1 : 0) * boardState.dir * (typeof av === "string" ? -1 : 1);
+  });
+  renderTable($("#board"), boardCols, rows.slice(0, 220), boardState);
+};
+rerenders.push(boardState.rerender);
+$("#posfilters").innerHTML = ["ALL","QB","RB","WR","TE","COACH"].map(p =>
+  `<button class="chip" data-pos="${p}" aria-pressed="${p==="ALL"}">${p}</button>`).join("") +
+  `<button class="chip" id="hidetaken" aria-pressed="false">HIDE DRAFTED</button>`;
+$("#posfilters").querySelectorAll(".chip[data-pos]").forEach(b => b.onclick = () => {
+  boardState.pos = b.dataset.pos;
+  $("#posfilters").querySelectorAll(".chip[data-pos]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  boardState.rerender();
+});
+$("#hidetaken").onclick = () => {
+  boardState.hideTaken = !boardState.hideTaken;
+  $("#hidetaken").setAttribute("aria-pressed", String(boardState.hideTaken));
+  boardState.rerender();
+};
+boardState.rerender();
+updateTracker();
+
+/* ---------- position sections ---------- */
+const bd = (r, k) => (r.b && r.b[k] != null) ? r.b[k] : null;
+const sum = (r, keys) => keys.some(k => bd(r,k) != null)
+  ? keys.reduce((s,k) => s + (bd(r,k) || 0), 0) : null;
+
+const posDefs = [
+  ["QB", 28, "Points per dropback is the whole game: accuracy and catchable-ball rate build the floor, hero throws the ceiling; sacks and turnover-worthy throws burn it down.", [
+    { key:"ctx.db", h:"DB", cell:r => num(r.ctx.db,0,"dim") },
+    { key:"b.accurateThrow", h:"Acc pts", cell:r => num(bd(r,"accurateThrow")) },
+    { key:"b.catchableThrow", h:"Catch pts", cell:r => num(bd(r,"catchableThrow")) },
+    { key:"b.heroThrow", h:"Hero", cell:r => num(bd(r,"heroThrow")) },
+    { key:"b.turnoverWorthy", h:"TW", cell:r => num(bd(r,"turnoverWorthy")) },
+    { key:"b.incompletion", h:"Inc", cell:r => num(bd(r,"incompletion")) },
+    { key:"b.sackTaken", h:"Sacks", cell:r => num(bd(r,"sackTaken")) },
+  ]],
+  ["RB", 40, "Broken tackles at 3 a pop plus yards-after-contact: violent, elusive volume wins. Receiving matters only as extra chances to break tackles and rip explosives.", [
+    { key:"ctx.att", h:"Att", cell:r => num(r.ctx.att,0,"dim") },
+    { key:"ctx.rec", h:"Rec", cell:r => num(r.ctx.rec,0,"dim") },
+    { key:"b.missedTackleForced", h:"MTF pts", cell:r => num(bd(r,"missedTackleForced")) },
+    { key:"yaco", h:"YACO pts", cell:r => num(sum(r,["rushYaco","recYaco"])) },
+    { key:"expl", h:"Expl pts", cell:r => num(sum(r,["rushExplosive","recExplosive"])) },
+  ]],
+  ["WR", 48, "Separation is graded on every route (−2 to +4) — route-winning volume compounds. First downs and hero catches stack on top; drops come off.", [
+    { key:"ctx.rte", h:"Routes", cell:r => num(r.ctx.rte,0,"dim") },
+    { key:"ctx.tgt", h:"Tgt", cell:r => num(r.ctx.tgt,0,"dim") },
+    { key:"sep", h:"Sep pts", cell:r => num(sum(r,["sepP1","sepP2","sepP3","sepP4","sepM1","sepM2"])) },
+    { key:"b.recFirstDown", h:"Re1D pts", cell:r => num(bd(r,"recFirstDown")) },
+    { key:"b.heroCatch", h:"Hero", cell:r => num(bd(r,"heroCatch")) },
+    { key:"b.drop", h:"Drops", cell:r => num(bd(r,"drop")) },
+  ]],
+  ["TE", 28, "One number matters: how often the play is designed to go to him first. 4 points per first-read target; drops are the only deduction.", [
+    { key:"ctx.tgt", h:"Tgt", cell:r => num(r.ctx.tgt,0,"dim") },
+    { key:"b.recFirstRead", h:"1st-read pts", cell:r => num(bd(r,"recFirstRead")) },
+    { key:"b.drop", h:"Drops", cell:r => num(bd(r,"drop")) },
+  ]],
+  ["COACH", 32, "Scheme (play-action, motion), aggression (4th-down go, deep shots on 2nd-and-short), and results (wins, 30-point games). Running on 2nd-and-long costs a point every time.", [
+    { key:"b.paDropbacks", h:"PA pts", cell:r => num(bd(r,"paDropbacks")) },
+    { key:"b.motionDropbacks", h:"Motion pts", cell:r => num(bd(r,"motionDropbacks")) },
+    { key:"b.fourthDownGo", h:"4th-down", cell:r => num(bd(r,"fourthDownGo")) },
+    { key:"b.run2ndLong", h:"2nd&amp;long tax", cell:r => num(bd(r,"run2ndLong")) },
+    { key:"b.deep2ndShort", h:"Deep 2nd&amp;short", cell:r => num(bd(r,"deep2ndShort")) },
+    { key:"ctx.w", h:"Wins", cell:r => num(r.ctx.w,1,"dim") },
+    { key:"b.scored30Plus", h:"30+ pts", cell:r => num(bd(r,"scored30Plus")) },
+  ]],
+];
+
+$("#possections").innerHTML = posDefs.map(([pos]) => `
+  <section>
+    <h2>${pos === "COACH" ? "Coaches" : pos + "s"}</h2>
+    <p class="sectionnote" id="note-${pos}"></p>
+    <div class="tblwrap"><table id="tbl-${pos}"></table></div>
+  </section>`).join("");
+
+posDefs.forEach(([pos, n, note, extra]) => {
+  $("#note-" + pos).textContent = note;
+  const cols = [
+    { key:"tk",  h:"",       txt:1, cell:tkCell },
+    { key:"pr",  h:"#",      cell:r => num(r.pr,0,"strong") },
+    { key:"n",   h:"Player", txt:1, cell:nameCell },
+    { key:"t",   h:"Team",   txt:1, cell:r => td(`<span class="teamcode">${esc(r.t)}</span>`, "txt") },
+    { key:"tier",h:"Tier",   cell:r => num(r.tier,0,"dim") },
+    { key:"pts", h:"Proj",   cell:r => num(r.pts,1,"strong") },
+    { key:"ppg", h:"PPG",    cell:r => num(r.ppg,2) },
+    { key:"vor", h:"VOR",    cell:r => num(r.vor) },
+    ...extra,
+    { key:"r",   h:"Ovr",    cell:r => num(r.r,0,"dim") },
+  ];
+  const st = { key:"pr", dir:1 };
+  st.rerender = () => {
+    const rows = byPos(pos).slice(0, n).sort((a,b) => {
+      const get = x => {
+        if (st.key.startsWith("ctx.")) return x.ctx ? x.ctx[st.key.slice(4)] : null;
+        if (st.key.startsWith("b."))   return bd(x, st.key.slice(2));
+        if (st.key === "sep")  return sum(x,["sepP1","sepP2","sepP3","sepP4","sepM1","sepM2"]);
+        if (st.key === "yaco") return sum(x,["rushYaco","recYaco"]);
+        if (st.key === "expl") return sum(x,["rushExplosive","recExplosive"]);
+        if (st.key === "tk")   return isTaken(x.id) ? 1 : 0;
+        return x[st.key];
+      };
+      const av = get(a), bv = get(b);
+      if (av == null) return 1; if (bv == null) return -1;
+      return (av < bv ? -1 : av > bv ? 1 : 0) * st.dir * (typeof av === "string" ? -1 : 1);
+    });
+    renderTable($("#tbl-" + pos), cols, rows, st);
+  };
+  rerenders.push(st.rerender);
+  st.rerender();
+});
+
+/* ---------- methodology ---------- */
+$("#method").innerHTML = `
+  <p><b>Method.</b> Volume (games, dropbacks, carries, targets, routes) comes from the owner's season-long
+  projection sheet. Each scoring stat is projected as a per-volume rate from 2024–2025 NFL charting data
+  (weighted 65/35, shrunk toward position means), scored through the league's actual scoring engine.
+  Rookies use rookie-year rates of 2021–2025 draftees at the same position and draft capital.
+  Coach scheme rates use 2024–2025 play-by-play; teams with a new playcaller are regressed harder.
+  Wins are Pythagorean from the sheet's own points-for and points-allowed projections.</p>
+  <p><b>Trust levels.</b> Backtest (2024 rates applied to 2025 volume): RB and TE rank correlation ~0.90,
+  QB and WR ~0.75. Charting-based QB and WR stats are noisier year to year — lean on tiers, not exact ranks.
+  Unscored context stats (yards, TDs, PPR) are shown only for orientation.</p>
+  <p class="mono" style="font-size:11px">SCOTT BEAR BOWL &middot; 2026 &middot; BUILT ${esc(DATA.generated)} &middot; REPLACEMENT LEVELS ${Object.entries(DATA.baselines).map(([p,b])=>`${p}${b.rank} ${b.points.toFixed(0)}`).join(" · ")}</p>`;
+</script>
