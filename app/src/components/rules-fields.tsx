@@ -19,7 +19,7 @@ export function RuleFieldsets({ groups, scope }: { groups: LabFieldGroup[]; scop
       {groups.map((group) => (
         <fieldset key={group.title}>
           <legend className="label">{group.title}</legend>
-          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="mt-2 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
             {group.fields.map((f) => (
               <label key={f.name} className="flex flex-col gap-1 text-xs text-paper/80">
                 {f.label}

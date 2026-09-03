@@ -342,7 +342,7 @@ export function ScoringLab({
               </button>
               <span className="note">Nothing is written — pure what-if on posted stat lines.</span>
               {state.error && <span className="text-sm text-flame">{state.error}</span>}
-              <span className="ml-auto flex items-center gap-2">
+              <span className="ml-auto flex flex-wrap items-center gap-2">
                 <input
                   name="setName"
                   defaultValue={initialSetName}

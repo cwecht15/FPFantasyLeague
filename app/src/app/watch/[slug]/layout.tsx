@@ -58,7 +58,7 @@ export default async function WatchLayout({
             <div className="label">{SITE_NAME} · Spectator view</div>
             <div className="display text-2xl">{pub.league.name}</div>
           </div>
-          <nav className="flex items-center gap-2">
+          <nav className="flex flex-wrap items-center gap-2">
             {TABS.map((t) => (
               <Link key={t.href} href={`/watch/${slug}/${t.href}`} className="btn2">
                 {t.label}

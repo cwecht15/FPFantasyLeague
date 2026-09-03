@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
@@ -154,6 +155,7 @@ export default async function StandingsPage({
         <p className="empty">No teams in this league yet.</p>
       ) : (
         <div className="panel">
+          <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
               <tr>
@@ -178,9 +180,9 @@ export default async function StandingsPage({
             </thead>
             <tbody>
               {rows.map((r, i) => (
-                <>
+                <Fragment key={r.teamId}>
                   {i === cutAfter && (
-                    <tr key="cutline">
+                    <tr>
                       <td colSpan={11} className="!border-0 !p-0">
                         <div className="flex items-center gap-3 px-3.5 py-1">
                           <div className="red-rule flex-1" />
@@ -192,7 +194,7 @@ export default async function StandingsPage({
                       </td>
                     </tr>
                   )}
-                  <tr key={r.teamId} className={r.teamId === myTeamId ? "you" : "hov"}>
+                  <tr className={r.teamId === myTeamId ? "you" : "hov"}>
                     <td className="rk">{r.s.rank ?? i + 1}</td>
                     <td className="tm">
                       {r.teamName}
@@ -224,10 +226,11 @@ export default async function StandingsPage({
                       )}
                     </td>
                   </tr>
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

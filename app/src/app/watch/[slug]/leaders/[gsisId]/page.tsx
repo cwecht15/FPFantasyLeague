@@ -74,7 +74,7 @@ export default async function WatchPlayerBreakdownPage({
             {player.nflTeam ?? "—"} · scored under {league.name}&apos;s rules
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {seasons.map((s) => (
             <Link
               key={s}

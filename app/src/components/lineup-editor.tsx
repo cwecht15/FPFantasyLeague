@@ -299,7 +299,7 @@ export function LineupEditor({
           />
         ))}
 
-      <div className="mb-3.5 mt-1 flex items-center justify-between gap-3">
+      <div className="mb-3.5 mt-1 flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm text-muted">
           Starter total:{" "}
           <b className="font-mono text-base text-paper">{anyScored ? fmt1(starterTotal) : "—"}</b>
@@ -329,12 +329,13 @@ export function LineupEditor({
         </div>
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: "1.25fr 1fr" }}>
-        <div className="panel">
+      <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+        <div className="panel min-w-0">
           <div className="ptitle">
             <span className="t">Starters</span>
             {hint && <span className="m">{hint}</span>}
           </div>
+          <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
               <tr>
@@ -349,15 +350,17 @@ export function LineupEditor({
             </thead>
             <tbody>{starters.map(starterRow)}</tbody>
           </table>
+          </div>
         </div>
 
-        <div className="panel">
+        <div className="panel min-w-0">
           <div className="ptitle">
             <span className="t">Bench</span>
             <span className="m">
               {benchPlayers.length} of {roster.length}
             </span>
           </div>
+          <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
               <tr>
@@ -380,6 +383,7 @@ export function LineupEditor({
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

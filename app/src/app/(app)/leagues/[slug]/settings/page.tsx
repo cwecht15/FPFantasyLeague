@@ -161,7 +161,7 @@ export default async function SettingsPage({
           <tbody>
             {howItWorks.map(([label, copy]) => (
               <tr key={label}>
-                <td className="dim" style={{ width: 130, verticalAlign: "top" }}>
+                <td className="dim" style={{ width: 110, verticalAlign: "top" }}>
                   {label}
                 </td>
                 <td style={{ fontSize: 13 }}>{copy}</td>
@@ -230,7 +230,7 @@ export default async function SettingsPage({
               action={renameTeamAction}
               submitLabel="Rename"
               successMessage="Saved"
-              className="flex items-end gap-3"
+              className="flex flex-wrap items-end gap-3"
             >
               <input type="hidden" name="slug" value={slug} />
               <label className="field !mb-0">
@@ -241,8 +241,7 @@ export default async function SettingsPage({
                   required
                   minLength={2}
                   maxLength={40}
-                  className="input"
-                  style={{ width: 280 }}
+                  className="input w-full max-w-[280px]"
                 />
               </label>
             </ActionForm>

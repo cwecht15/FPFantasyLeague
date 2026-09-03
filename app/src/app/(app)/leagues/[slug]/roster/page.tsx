@@ -90,6 +90,7 @@ export default async function RosterPage({
       </header>
 
       <div className="panel">
+        <div className="overflow-x-auto">
         <table className="tbl">
           <thead>
             <tr>
@@ -134,6 +135,7 @@ export default async function RosterPage({
             })}
           </tbody>
         </table>
+        </div>
         {rows.length === 0 && (
           <p className="empty">No players yet — draft or add from the Players tab.</p>
         )}

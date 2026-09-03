@@ -54,8 +54,8 @@ export default async function LeagueHomePage({
         </div>
       </header>
 
-      <div className="mt-2 grid gap-4" style={{ gridTemplateColumns: "1.1fr 1fr" }}>
-        <div className="panel">
+      <div className="mt-2 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+        <div className="panel min-w-0">
           <div className="ptitle">
             <span className="t">Week {d.week} matchup</span>
             <span className="m">Results post Tue 6:00 AM ET</span>
@@ -63,34 +63,34 @@ export default async function LeagueHomePage({
           {d.matchup ? (
             <>
               <div
-                className="grid items-center gap-[18px] px-[26px] pb-3 pt-[30px]"
+                className="grid items-center gap-2.5 px-3 pb-3 pt-[30px] sm:gap-[18px] sm:px-[26px]"
                 style={{ gridTemplateColumns: "1fr auto 1fr" }}
               >
-                <div className="text-center">
-                  <div className="display text-[20px]">{ctx.myTeam.name}</div>
+                <div className="min-w-0 text-center">
+                  <div className="display text-[17px] sm:text-[20px]">{ctx.myTeam.name}</div>
                   {d.me && (
                     <div className="mt-[5px] text-xs text-faint">
                       {d.me.w}–{d.me.l} · {ord(d.me.rank)}
                     </div>
                   )}
-                  <div className="mt-3 font-mono text-[52px] font-bold">
+                  <div className="mt-3 font-mono text-3xl font-bold sm:text-[52px]">
                     {fmt1(d.matchup.myPoints)}
                   </div>
                 </div>
                 <div className="display text-[18px] text-faint">VS</div>
-                <div className="text-center">
-                  <div className="display text-[20px]">{d.matchup.oppName}</div>
+                <div className="min-w-0 text-center">
+                  <div className="display text-[17px] sm:text-[20px]">{d.matchup.oppName}</div>
                   {d.matchup.oppRow && (
                     <div className="mt-[5px] text-xs text-faint">
                       {d.matchup.oppRow.w}–{d.matchup.oppRow.l} · {ord(d.matchup.oppRow.rank)}
                     </div>
                   )}
-                  <div className="mt-3 font-mono text-[52px] font-bold text-muted">
+                  <div className="mt-3 font-mono text-3xl font-bold text-muted sm:text-[52px]">
                     {fmt1(d.matchup.oppPoints)}
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between px-[26px] pb-5 pt-1.5 text-xs text-faint">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 px-[26px] pb-5 pt-1.5 text-xs text-faint">
                 <span>
                   Lineup:{" "}
                   <b className="text-muted">
@@ -100,7 +100,7 @@ export default async function LeagueHomePage({
                 </span>
                 {d.lineup.firstLock && <span>First lock: {fmtKick(d.lineup.firstLock)} ET</span>}
               </div>
-              <div className="flex justify-center gap-2.5 px-[26px] pb-6">
+              <div className="flex flex-wrap justify-center gap-2.5 px-[26px] pb-6">
                 <Link href={`${base}/lineup`} className="btn pri">
                   <span>Set lineup</span>
                 </Link>
@@ -132,7 +132,7 @@ export default async function LeagueHomePage({
           )}
         </div>
 
-        <div className="panel">
+        <div className="panel min-w-0">
           <div className="ptitle">
             <span className="t">Standings</span>
             <Link href={`${base}/standings`} className="m">
@@ -142,6 +142,7 @@ export default async function LeagueHomePage({
           {rows.length === 0 ? (
             <p className="empty">Standings appear once a week is scored.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="tbl">
               <thead>
                 <tr>
@@ -169,12 +170,13 @@ export default async function LeagueHomePage({
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
 
       <div
-        className="mb-11 mt-4 flex items-center justify-between gap-6 border border-line bg-surface px-[26px] py-[18px]"
+        className="mb-11 mt-4 flex flex-wrap items-center justify-between gap-4 border border-line bg-surface px-[26px] py-[18px] sm:gap-6"
         style={{ borderLeft: "3px solid var(--color-flame)" }}
       >
         <div>

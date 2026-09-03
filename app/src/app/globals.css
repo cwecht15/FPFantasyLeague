@@ -29,6 +29,7 @@
 
 html {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -80,6 +81,7 @@ body {
 
 .page-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
@@ -87,7 +89,8 @@ body {
 }
 .page-head h1 {
   margin: 6px 0 0;
-  font-size: 56px;
+  font-size: clamp(30px, 9vw, 56px);
+  overflow-wrap: anywhere;
 }
 .page-head .sub {
   margin-top: 10px;
@@ -301,6 +304,7 @@ body {
 }
 .ptitle {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   padding: 14px 22px;
@@ -640,6 +644,7 @@ input[type="number"]::-webkit-inner-spin-button {
   letter-spacing: 0.06em;
   font-size: 14px;
   padding: 10px 26px;
+  max-width: calc(100vw - 32px);
   z-index: 50;
   animation: toast-in 160ms ease;
 }
@@ -662,6 +667,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .login-stage {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   position: relative;
@@ -718,4 +724,63 @@ input[type="number"]::-webkit-inner-spin-button {
 ::selection {
   background: var(--color-flame);
   color: var(--color-paper);
+}
+
+/* ---- small screens ----------------------------------------------------------
+   The design system is desktop-first (1280px container, 40px gutters); these
+   overrides keep every page usable on a phone. Wide tables/grids scroll inside
+   their own overflow-x-auto containers per the brand handoff — the page body
+   itself must never scroll sideways. */
+@media (max-width: 640px) {
+  .wrap {
+    padding: 0 16px;
+  }
+  .page-head {
+    gap: 12px 16px;
+    padding: 24px 0 16px;
+  }
+  table.tbl {
+    font-size: 12.5px;
+  }
+  .tbl th {
+    padding: 9px 8px 6px;
+  }
+  .tbl td {
+    padding: 8px 8px;
+  }
+  /* iOS Safari force-zooms focused inputs below 16px. */
+  .input,
+  select.input,
+  textarea.input {
+    font-size: 16px;
+  }
+  .topnav {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .topnav .right {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+  .topnav .who {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Comfortable tap targets on touch devices without inflating desktop chrome. */
+@media (pointer: coarse) {
+  .btn2,
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+  }
+  .tabs a {
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
 }

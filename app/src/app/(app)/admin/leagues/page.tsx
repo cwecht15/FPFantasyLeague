@@ -63,6 +63,7 @@ export default async function AdminLeaguesPage() {
         {rows.length === 0 ? (
           <p className="empty">No leagues yet — create the first one below.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
               <tr>
@@ -101,6 +102,7 @@ export default async function AdminLeaguesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

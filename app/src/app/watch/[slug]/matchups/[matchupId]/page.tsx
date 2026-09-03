@@ -62,11 +62,11 @@ export default async function WatchMatchupDetailPage({
     const value = s.points !== null ? fmt1(s.points) : s.kickoffAt ? fmtKick(s.kickoffAt) : "—";
     const isTop = final && s.points !== null && s.points === top && s.points > 0;
     return (
-      <div className={`flex items-center justify-between gap-3 ${mirror ? "flex-row-reverse" : ""}`}>
-        <div className={mirror ? "text-right" : ""}>
+      <div className={`flex min-w-0 items-center justify-between gap-2 sm:gap-3 ${mirror ? "flex-row-reverse" : ""}`}>
+        <div className={`min-w-0 ${mirror ? "text-right" : ""}`}>
           {s.playerName ? (
             <>
-              <div className="text-[13.5px] font-bold">{s.playerName}</div>
+              <div className="truncate text-[13.5px] font-bold">{s.playerName}</div>
               <div className="text-[11px] text-faint">
                 {s.position} · {s.nflTeam ?? "—"}
                 {s.locked && s.points === null && <span className="ml-2">LOCKED</span>}
@@ -88,13 +88,13 @@ export default async function WatchMatchupDetailPage({
   const teamHead = (id: number, pts: number | null, mirror: boolean) => {
     const winner = final && m.winnerTeamId === id;
     return (
-      <div className={mirror ? "text-right" : ""}>
-        <div className="display text-2xl">
+      <div className={`min-w-0 ${mirror ? "text-right" : ""}`}>
+        <div className="display text-lg sm:text-2xl">
           {winner && !mirror && <span className="res W mr-2.5">W</span>}
           {teamName.get(id) ?? "?"}
           {winner && mirror && <span className="res W ml-2.5">W</span>}
         </div>
-        <div className="mt-2 font-mono text-[46px] font-bold">{fmt1(pts)}</div>
+        <div className="mt-2 font-mono text-3xl font-bold sm:text-[46px]">{fmt1(pts)}</div>
       </div>
     );
   };
@@ -114,7 +114,7 @@ export default async function WatchMatchupDetailPage({
 
       <div className="panel">
         <div
-          className="grid items-start gap-4 border-b border-line px-[26px] py-6"
+          className="grid items-start gap-2 border-b border-line px-3 py-6 sm:gap-4 sm:px-[26px]"
           style={{ gridTemplateColumns: "1fr auto 1fr" }}
         >
           {teamHead(m.homeTeamId, m.homePoints, false)}
@@ -130,8 +130,7 @@ export default async function WatchMatchupDetailPage({
             return (
               <div
                 key={hs.slotId}
-                className="grid items-center gap-4 border-b border-line px-[26px] py-2.5"
-                style={{ gridTemplateColumns: "1fr 64px 1fr" }}
+                className="grid grid-cols-[1fr_44px_1fr] items-center gap-2 border-b border-line px-3 py-2.5 sm:grid-cols-[1fr_64px_1fr] sm:gap-4 sm:px-[26px]"
               >
                 {playerCell(hs, false, homeTop)}
                 <div className="display text-center text-xs text-faint">{label}</div>
@@ -142,8 +141,7 @@ export default async function WatchMatchupDetailPage({
         </div>
 
         <div
-          className="grid items-center gap-4 bg-ink px-[26px] py-3.5"
-          style={{ gridTemplateColumns: "1fr 64px 1fr" }}
+          className="grid grid-cols-[1fr_44px_1fr] items-center gap-2 bg-ink px-3 py-3.5 sm:grid-cols-[1fr_64px_1fr] sm:gap-4 sm:px-[26px]"
         >
           <div className="font-mono text-lg font-bold">{fmt1(m.homePoints)}</div>
           <div className="label text-center">Total</div>

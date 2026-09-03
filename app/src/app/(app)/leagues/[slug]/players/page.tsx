@@ -190,8 +190,7 @@ export default async function PlayersPage({
             name="q"
             defaultValue={q}
             placeholder="Search players…"
-            className="input"
-            style={{ width: 230 }}
+            className="input w-full max-w-[230px]"
           />
           <input type="hidden" name="pos" value={pos} />
           <input type="hidden" name="view" value={view} />
@@ -199,14 +198,14 @@ export default async function PlayersPage({
             Search
           </button>
         </form>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {POSITIONS.map((p) => (
             <Link key={p} href={pillHref({ pos: p })} className={`pill ${p === pos ? "on" : ""}`}>
               {p}
             </Link>
           ))}
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {VIEWS.map((v) => (
             <Link
               key={v.key}
@@ -220,6 +219,7 @@ export default async function PlayersPage({
       </div>
 
       <div className="panel">
+        <div className="overflow-x-auto">
         <table className="tbl">
           <thead>
             <tr>
@@ -287,6 +287,7 @@ export default async function PlayersPage({
             })}
           </tbody>
         </table>
+        </div>
         {filtered.length === 0 && <p className="empty">No players match.</p>}
       </div>
       <p className="note mb-11 mt-3">

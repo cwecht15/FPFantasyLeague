@@ -196,7 +196,7 @@ export default async function DraftPage({
         className="panel flex flex-wrap items-center justify-between gap-4 px-[22px] py-4"
         style={myTurn ? { borderLeft: "3px solid var(--color-flame)" } : undefined}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           {draft.status === "complete" ? (
             <span className="display text-[22px]">Draft complete</span>
           ) : current ? (
@@ -220,7 +220,7 @@ export default async function DraftPage({
             </>
           ) : null}
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center gap-5">
           {draft.status === "in_progress" && current?.deadlineAt && (
             <Countdown deadline={current.deadlineAt.toISOString()} />
           )}
@@ -293,11 +293,11 @@ export default async function DraftPage({
       )}
 
       {draft.status !== "complete" && (
-        <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: "1.8fr 1fr" }}>
-          <div className="panel">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.8fr_1fr]">
+          <div className="panel min-w-0">
             <div className="ptitle">
               <span className="t">Available players</span>
-              <span className="flex items-center gap-2">
+              <span className="flex flex-wrap items-center gap-2">
                 <form action={`/leagues/${slug}/draft`} method="get" className="flex items-center gap-2">
                   <input
                     name="q"
@@ -321,6 +321,7 @@ export default async function DraftPage({
                 ))}
               </span>
             </div>
+            <div className="overflow-x-auto">
             <table className="tbl">
               <thead>
                 <tr>
@@ -395,10 +396,11 @@ export default async function DraftPage({
                 </tbody>
               ))}
             </table>
+            </div>
             {groups.length === 0 && <p className="empty">No players match.</p>}
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             {ctx.myTeam && (
               <div className="panel">
                 <div className="ptitle">

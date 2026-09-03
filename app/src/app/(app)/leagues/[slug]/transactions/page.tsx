@@ -96,7 +96,7 @@ export default async function TransactionsPage({
                       <span className="num font-mono"> · ${c.bidAmount}</span>
                     )}
                   </span>
-                  <span className="flex items-center gap-3">
+                  <span className="flex flex-wrap items-center gap-3">
                     <span className="text-[11.5px] text-faint">
                       processes {fmtEt(c.processAfter)}
                     </span>
@@ -122,7 +122,7 @@ export default async function TransactionsPage({
               key={t.id}
               className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-[22px] py-3 text-[13.5px] last:border-b-0"
             >
-              <span className="flex items-center gap-3">
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="display border border-line px-2 py-0.5 text-[10.5px] text-muted">
                   {typeLabel[t.type] ?? t.type}
                 </span>

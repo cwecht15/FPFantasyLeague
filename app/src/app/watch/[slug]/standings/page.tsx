@@ -150,6 +150,7 @@ export default async function WatchStandingsPage({
         <p className="empty">No teams in this league yet.</p>
       ) : (
         <div className="panel">
+          <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
               <tr>
@@ -221,6 +222,7 @@ export default async function WatchStandingsPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

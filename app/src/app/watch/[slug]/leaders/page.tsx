@@ -97,8 +97,8 @@ export default async function WatchLeadersPage({
               : `What ${season} would have scored under this league's rules. Click a player for the breakdown.`}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <div className="flex flex-wrap items-center gap-2">
             {seasons.map((s) => (
               <Link
                 key={s}
@@ -109,7 +109,7 @@ export default async function WatchLeadersPage({
               </Link>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {POSITIONS.map((p) => (
               <Link
                 key={p}
@@ -130,6 +130,7 @@ export default async function WatchLeadersPage({
         </p>
       ) : (
         <div className="panel">
+          <div className="overflow-x-auto">
           <table className="tbl">
             <thead>
               <tr>
@@ -165,6 +166,7 @@ export default async function WatchLeadersPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

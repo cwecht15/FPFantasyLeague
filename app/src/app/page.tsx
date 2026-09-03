@@ -63,7 +63,7 @@ export default async function Home() {
 
         <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 pb-24 pt-12">
           <p className="label">{SITE_NAME}</p>
-          <h1 className="display mt-4 text-6xl sm:text-8xl">
+          <h1 className="display mt-4 text-5xl sm:text-8xl">
             Every yard
             <br />
             <span className="text-flame">earns</span> its point
@@ -109,7 +109,7 @@ export default async function Home() {
       </section>
 
       <footer className="mt-auto border-t border-line">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-6">
           <span className="flex items-center gap-3">
             <Image src="/brand/Lettermark-Primary.svg" alt="FantasyPoints" width={54} height={40} />
             <span className="label">Charting by FantasyPoints</span>
