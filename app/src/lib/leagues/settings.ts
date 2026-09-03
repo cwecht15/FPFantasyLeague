@@ -122,6 +122,11 @@ export const draftConfigSchema = z.object({
   thirdRoundReversal: z.boolean().default(false),
   // Matches the default roster template size (15 slots incl. bench + IR).
   rounds: z.number().int().min(1).max(40).default(15),
+  /** Overnight quiet window (ET whole hours): the pick clock stops at
+   *  clockQuietStartHourEt and resumes at clockQuietEndHourEt. Both unset (or
+   *  equal) = clock runs around the clock. See lib/draft/clock.ts. */
+  clockQuietStartHourEt: z.number().int().min(0).max(23).optional(),
+  clockQuietEndHourEt: z.number().int().min(0).max(23).optional(),
 });
 export type DraftConfig = z.infer<typeof draftConfigSchema>;
 

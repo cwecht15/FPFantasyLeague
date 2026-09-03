@@ -23,10 +23,29 @@ import {
   teams,
   transactions,
 } from "@/lib/db/schema";
-import type { DraftConfig } from "@/lib/leagues/settings";
+import {
+  SLOT_ELIGIBILITY,
+  draftConfigSchema,
+  type DraftConfig,
+  type RosterTemplate,
+} from "@/lib/leagues/settings";
+import { clockDeadline, quietWindowFrom, type QuietWindow } from "./clock";
+import guideRanks from "./guide-ranks.json";
 import { scoreStatLine } from "@/lib/scoring/score-stat-line";
 import { statRowToLine } from "@/lib/scoring/stat-row";
 import type { ScoringRules } from "@/lib/scoring/scoring-systems";
+
+/** Quiet window for a league's clock, straight from stored draft_config. */
+async function leagueQuietWindow(leagueId: number): Promise<QuietWindow | null> {
+  const [row] = await db
+    .select({ draftConfig: leagueSettings.draftConfig })
+    .from(leagueSettings)
+    .where(eq(leagueSettings.leagueId, leagueId))
+    .limit(1);
+  if (!row) return null;
+  const parsed = draftConfigSchema.safeParse(row.draftConfig);
+  return parsed.success ? quietWindowFrom(parsed.data) : null;
+}
 
 export type Draft = typeof drafts.$inferSelect;
 export type DraftPick = typeof draftPicks.$inferSelect;
@@ -127,7 +146,7 @@ export async function startDraft(
     // expire into an autopick — the draft only moves when someone picks.
     const deadline =
       config.secondsPerPick > 0
-        ? new Date(now.getTime() + config.secondsPerPick * 1000)
+        ? clockDeadline(now, config.secondsPerPick, quietWindowFrom(config))
         : null;
     await tx
       .update(draftPicks)
@@ -251,14 +270,22 @@ export async function makePick(opts: {
     );
     let draftComplete = false;
     if (next) {
+      // Deadline computed here (not in SQL) so the overnight quiet window in
+      // the league's draft config can pause the clock.
+      let nextDeadline: Date | null = null;
+      if (draft.seconds_per_pick > 0) {
+        const {
+          rows: [cfgRow],
+        } = await client.query(`SELECT draft_config FROM league_settings WHERE league_id = $1`, [
+          draft.league_id,
+        ]);
+        const parsed = draftConfigSchema.safeParse(cfgRow?.draft_config);
+        const quiet = parsed.success ? quietWindowFrom(parsed.data) : null;
+        nextDeadline = clockDeadline(new Date(), draft.seconds_per_pick, quiet);
+      }
       await client.query(
-        `UPDATE draft_picks
-            SET clock_started_at = now(),
-                deadline_at = CASE WHEN $2::int > 0
-                                   THEN now() + ($2 || ' seconds')::interval
-                                   ELSE NULL END
-          WHERE id = $1`,
-        [next.id, draft.seconds_per_pick],
+        `UPDATE draft_picks SET clock_started_at = now(), deadline_at = $2 WHERE id = $1`,
+        [next.id, nextDeadline],
       );
       await client.query(`UPDATE drafts SET current_pick_id = $2 WHERE id = $1`, [
         draftId,
@@ -372,8 +399,28 @@ async function leagueScoringRules(leagueId: number): Promise<ScoringRules | null
 // Autopick (worker)
 // ---------------------------------------------------------------------------
 
-/** Best available: queue first (rank order), else last-season production
- *  under the league's own scoring rules. */
+/** Positional cap for autopick: dedicated starters + flex share + a small
+ *  bench allowance. Autopick never drafts past the cap (humans still can) —
+ *  no 5-QB benches, and never a second COACH (only 32 exist; a backup is
+ *  near-worthless). */
+function autopickCap(position: string, template: RosterTemplate): number {
+  const dedicated = template.slots
+    .filter((s) => s.slot === position)
+    .reduce((n, s) => n + s.count, 0);
+  const flexEligible = (SLOT_ELIGIBILITY.FLEX as readonly string[]).includes(position);
+  const flexCount = template.slots
+    .filter((s) => s.slot === "FLEX")
+    .reduce((n, s) => n + s.count, 0);
+  if (position === "COACH") return Math.max(1, dedicated);
+  const bench = position === "QB" ? 1 : 2;
+  return dedicated + (flexEligible ? flexCount : 0) + bench;
+}
+
+/** Best available: queue first (rank order); else best remaining by a blend of
+ *  last-season production under the league's rules (65%) and the owner's draft
+ *  guide board (35%, ships as guide-ranks.json — also gives rookies a real
+ *  rank), constrained by positional caps and a guarantee that the last picks
+ *  fill any empty dedicated starter slots. */
 export async function chooseAutopick(
   draftId: number,
   leagueId: number,
@@ -401,9 +448,9 @@ export async function chooseAutopick(
     if (!taken) return q.gsisId;
   }
 
-  // 2) best available by last season's production under the league's rules.
+  // 2) best available, needs-aware.
   const { rows } = await pool.query(
-    `SELECT p.gsis_id
+    `SELECT p.gsis_id, p.position
        FROM players p
       WHERE p.position IN ('QB','RB','WR','TE','COACH')
         AND NOT EXISTS (
@@ -415,17 +462,80 @@ export async function chooseAutopick(
   if (rows.length === 0) return null;
   const rules = await leagueScoringRules(leagueId);
   if (!rules) return rows[0].gsis_id;
-  const pts = await seasonPointsByPlayer(season - 1, rules);
-  let best: string | null = null;
-  let bestPts = -Infinity;
-  for (const r of rows) {
-    const v = pts.get(r.gsis_id)?.points ?? -Infinity;
-    if (v > bestPts) {
-      best = r.gsis_id;
-      bestPts = v;
+
+  // The team's roster so far (by position) and its remaining pick count.
+  const rosterRows = await db
+    .select({ position: players.position })
+    .from(rosterEntries)
+    .innerJoin(players, eq(players.gsisId, rosterEntries.gsisId))
+    .where(and(eq(rosterEntries.teamId, teamId), isNull(rosterEntries.droppedAt)));
+  const have = new Map<string, number>();
+  for (const r of rosterRows) have.set(r.position, (have.get(r.position) ?? 0) + 1);
+  const [{ remaining }] = (
+    await pool.query(
+      `SELECT COUNT(*)::int AS remaining FROM draft_picks
+        WHERE draft_id = $1 AND team_id = $2 AND picked_at IS NULL`,
+      [draftId, teamId],
+    )
+  ).rows as { remaining: number }[];
+
+  const [settingsRow] = await db
+    .select({ rosterTemplate: leagueSettings.rosterTemplate })
+    .from(leagueSettings)
+    .where(eq(leagueSettings.leagueId, leagueId))
+    .limit(1);
+  const template = settingsRow?.rosterTemplate ?? null;
+
+  // Empty dedicated starter slots this team still has to fill; when the picks
+  // left are only just enough, restrict to those positions (never finish the
+  // draft without, say, a COACH).
+  const mustFill = new Set<string>();
+  let unfilled = 0;
+  if (template) {
+    for (const pos of ["QB", "RB", "WR", "TE", "COACH"]) {
+      const dedicated = template.slots
+        .filter((s) => s.slot === pos)
+        .reduce((n, s) => n + s.count, 0);
+      const need = Math.max(0, dedicated - (have.get(pos) ?? 0));
+      if (need > 0) mustFill.add(pos);
+      unfilled += need;
     }
   }
-  return best ?? rows[0].gsis_id;
+  const restrictToNeeds = template !== null && remaining <= unfilled;
+
+  const allowed = (position: string): boolean => {
+    if (!template) return true;
+    if (restrictToNeeds) return mustFill.has(position);
+    return (have.get(position) ?? 0) < autopickCap(position, template);
+  };
+
+  // Rank blend: last-season points under league rules + the draft guide board.
+  const pts = await seasonPointsByPlayer(season - 1, rules);
+  const byPts = [...rows].sort(
+    (a, b) => (pts.get(b.gsis_id)?.points ?? -Infinity) - (pts.get(a.gsis_id)?.points ?? -Infinity),
+  );
+  const seasonRank = new Map(byPts.map((r, i) => [r.gsis_id, i + 1]));
+  const ranks = guideRanks as Record<string, number>;
+  const UNRANKED = 300;
+  const blended = (id: string): number =>
+    0.65 * (seasonRank.get(id) ?? UNRANKED) + 0.35 * (ranks[id] ?? UNRANKED);
+
+  const pickFrom = (candidates: typeof rows): string | null => {
+    let best: string | null = null;
+    let bestScore = Infinity;
+    for (const r of candidates) {
+      const v = blended(r.gsis_id);
+      if (v < bestScore) {
+        best = r.gsis_id;
+        bestScore = v;
+      }
+    }
+    return best;
+  };
+
+  // Constrained first; if the caps somehow exclude everyone, pick unconstrained
+  // rather than stall the draft.
+  return pickFrom(rows.filter((r) => allowed(r.position))) ?? pickFrom(rows) ?? rows[0].gsis_id;
 }
 
 /** Worker scan: autopick every expired current pick. Returns picks made. */
@@ -587,13 +697,14 @@ export async function setDraftPaused(draftId: number, paused: boolean): Promise<
         .set({ status: "in_progress", pausedAt: null })
         .where(eq(drafts.id, draftId));
       if (d.currentPickId) {
+        const quiet = d.secondsPerPick > 0 ? await leagueQuietWindow(d.leagueId) : null;
         await tx
           .update(draftPicks)
           .set({
             clockStartedAt: new Date(),
             deadlineAt:
               d.secondsPerPick > 0
-                ? sql`now() + (${d.secondsPerPick} || ' seconds')::interval`
+                ? clockDeadline(new Date(), d.secondsPerPick, quiet)
                 : null,
           })
           .where(eq(draftPicks.id, d.currentPickId));

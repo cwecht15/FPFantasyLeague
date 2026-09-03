@@ -8,6 +8,7 @@ import { players, rosterEntries, teams } from "@/lib/db/schema";
 import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
 import { ACTIVE_POSITIONS } from "@/lib/leagues/settings";
 import { getDraft, getDraftBoard, listAvailable } from "@/lib/draft/service";
+import { quietWindowFrom, quietWindowLabel } from "@/lib/draft/clock";
 import { listMyQueue, pauseDraftAction, startDraftAction } from "@/lib/draft/actions";
 import { ActionForm } from "@/components/action-form";
 import { Countdown, PickButton, PollRefresher, QueueRemove } from "@/components/draft-client";
@@ -223,6 +224,11 @@ export default async function DraftPage({
         <div className="flex flex-wrap items-center gap-5">
           {draft.status === "in_progress" && current?.deadlineAt && (
             <Countdown deadline={current.deadlineAt.toISOString()} />
+          )}
+          {draft.secondsPerPick > 0 && quietWindowFrom(settings.draftConfig) && (
+            <span className="text-[11px] text-faint">
+              Clock pauses overnight {quietWindowLabel(quietWindowFrom(settings.draftConfig)!)}
+            </span>
           )}
           {admin && draft.status !== "complete" && (
             <ActionForm

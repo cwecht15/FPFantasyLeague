@@ -9,8 +9,9 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { players, teams, users } from "@/lib/db/schema";
-import { getPublicLeague } from "@/lib/leagues/service";
+import { getPublicLeague, getSettings } from "@/lib/leagues/service";
 import { getDraft, getDraftBoard } from "@/lib/draft/service";
+import { quietWindowFrom, quietWindowLabel } from "@/lib/draft/clock";
 import { PollRefresher } from "@/components/draft-client";
 import { DraftBoard, type BoardPlayer } from "@/components/draft-board";
 
@@ -36,6 +37,11 @@ export default async function WatchDraftPage({
       </header>
     );
   }
+
+  const quiet =
+    draft.secondsPerPick > 0
+      ? quietWindowFrom((await getSettings(pub.league.id)).draftConfig)
+      : null;
 
   const board = await getDraftBoard(draft.id);
   // Followers know the people, not the team names — label columns and picks
@@ -123,6 +129,9 @@ export default async function WatchDraftPage({
         </div>
         <span className="text-xs text-faint">
           {draft.status === "complete" ? "" : "Updates automatically as picks come in"}
+          {draft.status !== "complete" && quiet && (
+            <span className="ml-3">· Clock pauses overnight {quietWindowLabel(quiet)}</span>
+          )}
         </span>
       </div>
 
