@@ -401,8 +401,8 @@ async function leagueScoringRules(leagueId: number): Promise<ScoringRules | null
 
 /** Positional cap for autopick: dedicated starters + flex share + a small
  *  bench allowance. Autopick never drafts past the cap (humans still can) —
- *  no 5-QB benches, and never a second COACH (only 32 exist; a backup is
- *  near-worthless). */
+ *  on the house template: QB 2, RB 5, WR 5, TE 2, COACH 1 (a backup TE or
+ *  COACH is dead weight; only 32 coaches exist). */
 function autopickCap(position: string, template: RosterTemplate): number {
   const dedicated = template.slots
     .filter((s) => s.slot === position)
@@ -412,14 +412,14 @@ function autopickCap(position: string, template: RosterTemplate): number {
     .filter((s) => s.slot === "FLEX")
     .reduce((n, s) => n + s.count, 0);
   if (position === "COACH") return Math.max(1, dedicated);
-  const bench = position === "QB" ? 1 : 2;
-  return dedicated + (flexEligible ? flexCount : 0) + bench;
+  if (position === "QB" || position === "TE") return dedicated + 1;
+  return dedicated + (flexEligible ? flexCount : 0) + 2;
 }
 
 /** Best available: queue first (rank order); else best remaining by a blend of
- *  last-season production under the league's rules (65%) and the owner's draft
- *  guide board (35%, ships as guide-ranks.json — also gives rookies a real
- *  rank), constrained by positional caps and a guarantee that the last picks
+ *  the owner's draft guide board (65%, ships as guide-ranks.json — also gives
+ *  rookies a real rank) and last-season production under the league's rules
+ *  (35%), constrained by positional caps and a guarantee that the last picks
  *  fill any empty dedicated starter slots. */
 export async function chooseAutopick(
   draftId: number,
@@ -509,7 +509,7 @@ export async function chooseAutopick(
     return (have.get(position) ?? 0) < autopickCap(position, template);
   };
 
-  // Rank blend: last-season points under league rules + the draft guide board.
+  // Rank blend: the draft guide board leads, last-season points sanity-check it.
   const pts = await seasonPointsByPlayer(season - 1, rules);
   const byPts = [...rows].sort(
     (a, b) => (pts.get(b.gsis_id)?.points ?? -Infinity) - (pts.get(a.gsis_id)?.points ?? -Infinity),
@@ -518,7 +518,7 @@ export async function chooseAutopick(
   const ranks = guideRanks as Record<string, number>;
   const UNRANKED = 300;
   const blended = (id: string): number =>
-    0.65 * (seasonRank.get(id) ?? UNRANKED) + 0.35 * (ranks[id] ?? UNRANKED);
+    0.65 * (ranks[id] ?? UNRANKED) + 0.35 * (seasonRank.get(id) ?? UNRANKED);
 
   const pickFrom = (candidates: typeof rows): string | null => {
     let best: string | null = null;
