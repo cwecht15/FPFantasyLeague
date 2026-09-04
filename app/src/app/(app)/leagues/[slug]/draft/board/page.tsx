@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
@@ -35,17 +35,23 @@ export default async function DraftBoardPage({
     (a, b) => (a.draftPosition ?? 99) - (b.draftPosition ?? 99),
   );
 
+  // Only players actually on the board — this page re-renders on every poll,
+  // so a whole-table pull here is real DB egress.
   const boardPlayers = new Map<string, BoardPlayer>();
-  const rows = await db
-    .select({
-      gsisId: players.gsisId,
-      name: players.displayName,
-      position: players.position,
-      nflTeam: players.nflTeam,
-    })
-    .from(players);
-  for (const r of rows) {
-    boardPlayers.set(r.gsisId, { name: r.name, position: r.position, nflTeam: r.nflTeam });
+  const pickedIds = board.map((p) => p.gsisId).filter((x): x is string => !!x);
+  if (pickedIds.length > 0) {
+    const rows = await db
+      .select({
+        gsisId: players.gsisId,
+        name: players.displayName,
+        position: players.position,
+        nflTeam: players.nflTeam,
+      })
+      .from(players)
+      .where(inArray(players.gsisId, pickedIds));
+    for (const r of rows) {
+      boardPlayers.set(r.gsisId, { name: r.name, position: r.position, nflTeam: r.nflTeam });
+    }
   }
 
   return (

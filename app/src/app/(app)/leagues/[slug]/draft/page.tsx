@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
@@ -81,17 +81,30 @@ export default async function DraftPage({
     .where(eq(teams.leagueId, ctx.league.id));
   const teamById = new Map(teamRows.map((t) => [t.id, t]));
 
+  const myQueue = ctx.myTeam ? await listMyQueue(ctx.league.id, ctx.myTeam.id) : [];
+
+  // Only players this page actually names (picked + queued) — the room polls
+  // every 12s per open tab, so a whole-table pull here is real DB egress.
   const playerNames = new Map<string, string>();
   const boardPlayers = new Map<string, BoardPlayer>();
   {
-    const rows = await db
-      .select({
-        gsisId: players.gsisId,
-        name: players.displayName,
-        position: players.position,
-        nflTeam: players.nflTeam,
-      })
-      .from(players);
+    const neededIds = [
+      ...new Set([
+        ...board.map((p) => p.gsisId).filter((x): x is string => !!x),
+        ...myQueue.map((q) => q.gsisId),
+      ]),
+    ];
+    const rows = neededIds.length
+      ? await db
+          .select({
+            gsisId: players.gsisId,
+            name: players.displayName,
+            position: players.position,
+            nflTeam: players.nflTeam,
+          })
+          .from(players)
+          .where(inArray(players.gsisId, neededIds))
+      : [];
     for (const r of rows) {
       playerNames.set(r.gsisId, `${r.name} (${r.position})`);
       boardPlayers.set(r.gsisId, { name: r.name, position: r.position, nflTeam: r.nflTeam });
@@ -155,7 +168,6 @@ export default async function DraftPage({
   );
   const rosterSize = settings.rosterTemplate.slots.reduce((n, s) => n + s.count, 0);
 
-  const myQueue = ctx.myTeam ? await listMyQueue(ctx.league.id, ctx.myTeam.id) : [];
   // Newest first: the ticker shows the latest pick at the left edge and the
   // full history scrolls off to the right.
   const madePicks = board

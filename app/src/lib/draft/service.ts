@@ -357,6 +357,10 @@ export interface SeasonLine {
 
 const seasonPtsCache = new Map<string, { at: number; map: Map<string, SeasonLine> }>();
 const SEASON_PTS_TTL_MS = 10 * 60 * 1000;
+/** Past seasons are immutable after the Thursday lock, but re-pulling a full
+ *  season of stat lines is the app's single biggest DB egress (it exhausted
+ *  the Neon transfer quota on 2026-09-04) — cache them for a day. */
+const PAST_SEASON_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function seasonPointsByPlayer(
   season: number,
@@ -364,7 +368,8 @@ export async function seasonPointsByPlayer(
 ): Promise<Map<string, SeasonLine>> {
   const key = `${season}:${JSON.stringify(rules)}`;
   const hit = seasonPtsCache.get(key);
-  if (hit && Date.now() - hit.at < SEASON_PTS_TTL_MS) return hit.map;
+  const ttl = season < new Date().getFullYear() ? PAST_SEASON_TTL_MS : SEASON_PTS_TTL_MS;
+  if (hit && Date.now() - hit.at < ttl) return hit.map;
 
   const rows = await db
     .select({ stat: playerWeekStats, position: players.position })
