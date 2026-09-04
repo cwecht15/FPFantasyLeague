@@ -116,6 +116,7 @@ export const notificationType = pgEnum("notification_type", [
   "trade_offer",
   "waiver_result",
   "matchup_result",
+  "announcement",
 ]);
 export const notificationChannel = pgEnum("notification_channel", ["email", "in_app"]);
 

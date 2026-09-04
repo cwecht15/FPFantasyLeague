@@ -23,7 +23,8 @@ export type NotifyType =
   | "pick_made"
   | "trade_offer"
   | "waiver_result"
-  | "matchup_result";
+  | "matchup_result"
+  | "announcement";
 
 export interface NotifyPayload {
   type: NotifyType;
