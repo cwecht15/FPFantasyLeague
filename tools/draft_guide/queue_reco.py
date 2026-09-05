@@ -69,6 +69,12 @@ def main() -> None:
             continue
         reco.append(p)
         queued[p["position"]] = queued.get(p["position"], 0) + 1
+    # 3) if every position capped out early, pad with raw best-available.
+    for p in available:
+        if len(reco) >= 10:
+            break
+        if p not in reco and p["position"] != "COACH" and p["position"] != "QB":
+            reco.append(p)
 
     first_ids = {p["gsisId"] for p in firsts}
     print(f"{TEAM}: {len(my_picks)} picks made, {remaining_picks} left; "
