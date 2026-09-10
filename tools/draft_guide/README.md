@@ -52,6 +52,17 @@ The published guide is a live draft board two ways:
   a republish pushes them to the page. Baked picks can't be un-toggled. During a live
   draft session, ask Claude to loop sync -> build -> republish every few minutes.
 
+### Hourly auto-sync (slow draft)
+
+The published artifact is https://claude.ai/code/artifact/278fdc62-7f55-4225-b84e-c1d705c7c40d
+(capability `db`, favicon already set — republish with `url` set, omit favicon/capabilities).
+During the slow draft a session-only Claude cron job (`CronCreate`, cron `11 7-22 * * *`,
+i.e. hourly 7:11–22:11 ET) does: `sync_draft` -> compare pick count to the `"picks"` value
+baked into `out/draft_guide_2026.html` -> if it grew, `build_guide` + republish + `queue_reco`
+and report new picks / on-the-clock / picks until cwecht is up / top-5 queue; at 144 picks
+final-publish, recap, and delete the job. Cron jobs die with the session and expire after
+7 days — a new session must recreate the job with that prompt rather than assume it runs.
+
 ## Known caveats
 
 - Backtest (2024 rates -> 2025 volume): Spearman ~0.90 RB/TE, ~0.75 QB/WR. Charting

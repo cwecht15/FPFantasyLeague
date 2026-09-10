@@ -62,6 +62,10 @@ async function main() {
     console.log(`notified ${m.name ?? m.userId} <${m.email}>`);
   }
   await pool.end();
+  // The notifications service keeps a pooled SMTP connection open, which
+  // would hold the event loop forever; every send above was awaited, so it
+  // is safe to exit now.
+  process.exit(0);
 }
 
 void main();

@@ -6,13 +6,19 @@
  *
  * Updates the league's stored draft config, and if a draft is already
  * in progress, also the live draft row and the current pick's deadline, so
- * the change takes effect immediately. Remember: a running clock needs the
+ * the change takes effect immediately. Pass --from-next to leave the pick
+ * currently on the clock alone (it keeps its existing deadline) and apply the
+ * new clock from the following pick on. Remember: a running clock needs the
  * worker scaled up, or nothing ever expires.
  *
- * Run against the target DB (DATABASE_URL / .env.local):
- *   npx tsx scripts/set-draft-clock.ts <league-slug> <seconds> [quietStartEt quietEndEt]
+ * NOTE: the quiet window is replaced, not merged — omit it and the clock runs
+ * 24/7. Re-pass the hours to keep an existing window.
+ *
+ * Run against the target DB (DATABASE_URL / .env.local, or --prod):
+ *   npx tsx scripts/set-draft-clock.ts <league-slug> <seconds> [quietStartEt quietEndEt] [--prod] [--from-next]
  *   npx tsx scripts/set-draft-clock.ts my-league-abc123 0            # no clock
  *   npx tsx scripts/set-draft-clock.ts my-league-abc123 14400 0 10   # 4h, paused 12AM-10AM ET
+ *   npx tsx scripts/set-draft-clock.ts my-league-abc123 3600 0 10 --from-next   # 1h from the next pick
  */
 
 import "../src/lib/db/load-env";
@@ -22,7 +28,8 @@ import { eq } from "drizzle-orm";
 import { clockDeadline, quietWindowFrom } from "../src/lib/draft/clock";
 
 async function main() {
-  const argv = process.argv.slice(2).filter((a) => a !== "--prod");
+  const fromNext = process.argv.includes("--from-next");
+  const argv = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   if (process.argv.includes("--prod")) {
     const env = readFileSync(resolve(process.cwd(), "../tools/scoring/.env"), "utf8");
     const m = env.match(/^APP_DB_URL="?([^"\r\n]+)"?/m);
@@ -88,7 +95,17 @@ async function main() {
   const [draft] = await db.select().from(s.drafts).where(eq(s.drafts.leagueId, league.id)).limit(1);
   if (draft && draft.status !== "complete") {
     await db.update(s.drafts).set({ secondsPerPick: seconds }).where(eq(s.drafts.id, draft.id));
-    if (draft.currentPickId) {
+    if (draft.currentPickId && fromNext) {
+      const [cur] = await db
+        .select({ overallPick: s.draftPicks.overallPick, deadlineAt: s.draftPicks.deadlineAt })
+        .from(s.draftPicks)
+        .where(eq(s.draftPicks.id, draft.currentPickId))
+        .limit(1);
+      console.log(
+        `live draft ${draft.id} (${draft.status}) updated — pick ${cur?.overallPick} keeps its deadline ` +
+          `(${cur?.deadlineAt?.toISOString() ?? "none"}); the new clock starts with the next pick`,
+      );
+    } else if (draft.currentPickId) {
       const deadline =
         seconds > 0 && draft.status === "in_progress"
           ? clockDeadline(new Date(), seconds, quiet)
@@ -98,8 +115,10 @@ async function main() {
         .set({ deadlineAt: deadline })
         .where(eq(s.draftPicks.id, draft.currentPickId));
       if (deadline) console.log(`current pick deadline: ${deadline.toISOString()}`);
+      console.log(`live draft ${draft.id} (${draft.status}) updated — current pick deadline ${seconds > 0 ? "restarted" : "cleared"}`);
+    } else {
+      console.log(`live draft ${draft.id} (${draft.status}) updated — no current pick`);
     }
-    console.log(`live draft ${draft.id} (${draft.status}) updated — current pick deadline ${seconds > 0 ? "restarted" : "cleared"}`);
   } else {
     console.log(draft ? "draft already complete — config change affects nothing" : "no draft yet — applies when the draft starts");
   }
