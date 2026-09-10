@@ -171,10 +171,17 @@ async function pointsMap(
   return new Map(rows.map((r) => [r.gsisId, r.points]));
 }
 
-/** Autofill an all-empty lineup so slots are never blank by default:
- *  copy last week's arrangement where players are still rostered, then fill
- *  remaining starter slots from the roster in draft/acquisition order
- *  (roster_entries.id ascending = pick order), bench/IR last. */
+/** Autofill EMPTY lineup slots so starters are never blank by default. Slots
+ *  that already hold a player are left exactly as the manager set them; only
+ *  empty slots are filled, and only from rostered players who are not in any
+ *  slot yet (players drafted or added after the lineup was first materialized
+ *  — the old all-or-nothing version left those unslotted and their starter
+ *  slots empty, which scores zero at rollup). Order: copy last week's
+ *  arrangement where still rostered, then fill starter slots from unslotted
+ *  players in draft/acquisition order (roster_entries.id ascending = pick
+ *  order) respecting eligibility, bench/IR last. A player whose game has
+ *  already kicked off is never auto-started (same rule as saveLineup) but can
+ *  still land on the bench. */
 export async function fillEmptyLineup(
   teamId: number,
   season: number,
@@ -186,7 +193,9 @@ export async function fillEmptyLineup(
     .select()
     .from(lineupSlots)
     .where(eq(lineupSlots.lineupId, lineupId));
-  if (slotRows.length === 0 || slotRows.some((s) => s.gsisId !== null)) return;
+  if (slotRows.length === 0) return;
+  const emptySlots = slotRows.filter((s) => s.gsisId === null);
+  if (emptySlots.length === 0) return;
 
   const roster = await db
     .select({ gsisId: rosterEntries.gsisId, position: players.position, entryId: rosterEntries.id })
@@ -194,12 +203,24 @@ export async function fillEmptyLineup(
     .innerJoin(players, eq(players.gsisId, rosterEntries.gsisId))
     .where(and(eq(rosterEntries.teamId, teamId), isNull(rosterEntries.droppedAt)))
     .orderBy(rosterEntries.id); // acquisition order ≈ draft order
-  if (roster.length === 0) return;
+
+  const used = new Set<string>(
+    slotRows.map((s) => s.gsisId).filter((g): g is string => g !== null),
+  );
+  const unslotted = roster.filter((r) => !used.has(r.gsisId));
+  if (unslotted.length === 0) return;
+
+  const kicks = await kickoffMap(
+    unslotted.map((r) => r.gsisId),
+    season,
+    week,
+  );
+  const locked = (gsisId: string) => isLocked(kicks.get(gsisId));
+  const isStarter = (slot: string) => slot !== "BENCH" && slot !== "IR";
 
   const assigned = new Map<number, string>(); // slotId -> gsisId
-  const used = new Set<string>();
 
-  // 1) inherit last week's arrangement (same slot/index) where still rostered
+  // 1) inherit last week's arrangement (same slot/index) into empty slots
   if (week > 1) {
     const [prev] = await db
       .select({ id: lineups.id })
@@ -211,33 +232,35 @@ export async function fillEmptyLineup(
         .select()
         .from(lineupSlots)
         .where(eq(lineupSlots.lineupId, prev.id));
-      const stillRostered = new Set(roster.map((r) => r.gsisId));
+      const candidates = new Set(unslotted.map((r) => r.gsisId));
       for (const ps of prevSlots) {
-        if (!ps.gsisId || !stillRostered.has(ps.gsisId) || used.has(ps.gsisId)) continue;
-        const target = slotRows.find(
+        if (!ps.gsisId || !candidates.has(ps.gsisId) || used.has(ps.gsisId)) continue;
+        const target = emptySlots.find(
           (s) => s.slot === ps.slot && s.slotIndex === ps.slotIndex,
         );
-        if (target && !assigned.has(target.id)) {
-          assigned.set(target.id, ps.gsisId);
-          used.add(ps.gsisId);
-        }
+        if (!target || assigned.has(target.id)) continue;
+        if (isStarter(target.slot) && locked(ps.gsisId)) continue;
+        assigned.set(target.id, ps.gsisId);
+        used.add(ps.gsisId);
       }
     }
   }
 
-  // 2) fill remaining starters by draft order, respecting eligibility
+  // 2) fill remaining empty starters by draft order, respecting eligibility
   const order = new Map(template.slots.map((d, i) => [d.slot, i]));
-  const sortedSlots = [...slotRows].sort(
+  const sortedEmpty = [...emptySlots].sort(
     (a, b) =>
       (order.get(a.slot as RosterSlot) ?? 99) - (order.get(b.slot as RosterSlot) ?? 99) ||
       a.slotIndex - b.slotIndex,
   );
-  for (const slot of sortedSlots) {
-    if (assigned.has(slot.id)) continue;
-    if (slot.slot === "BENCH" || slot.slot === "IR") continue;
+  for (const slot of sortedEmpty) {
+    if (assigned.has(slot.id) || !isStarter(slot.slot)) continue;
     const allowed = eligiblePositions(template, slot.slot);
-    const candidate = roster.find(
-      (r) => !used.has(r.gsisId) && (allowed.length === 0 || allowed.includes(r.position)),
+    const candidate = unslotted.find(
+      (r) =>
+        !used.has(r.gsisId) &&
+        !locked(r.gsisId) &&
+        (allowed.length === 0 || allowed.includes(r.position)),
     );
     if (candidate) {
       assigned.set(slot.id, candidate.gsisId);
@@ -245,11 +268,10 @@ export async function fillEmptyLineup(
     }
   }
 
-  // 3) leftovers to bench/IR
-  const leftovers = roster.filter((r) => !used.has(r.gsisId));
-  for (const slot of sortedSlots) {
-    if (assigned.has(slot.id)) continue;
-    if (slot.slot !== "BENCH" && slot.slot !== "IR") continue;
+  // 3) leftovers to empty bench/IR slots
+  const leftovers = unslotted.filter((r) => !used.has(r.gsisId));
+  for (const slot of sortedEmpty) {
+    if (assigned.has(slot.id) || isStarter(slot.slot)) continue;
     const next = leftovers.shift();
     if (!next) break;
     assigned.set(slot.id, next.gsisId);

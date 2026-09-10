@@ -22,7 +22,12 @@ import {
 } from "@/lib/db/schema";
 import type { WaiverConfig, RosterTemplate } from "@/lib/leagues/settings";
 import { nextWeeklyEt, WAIVER_DOW, WAIVER_HOUR_ET } from "@/lib/transactions/game-lock";
-import { activeRosterCount, ownerOf, rosterCap } from "@/lib/transactions/service";
+import {
+  activeRosterCount,
+  ownerOf,
+  pendingDraftPickCount,
+  rosterCap,
+} from "@/lib/transactions/service";
 
 /** Next occurrence of the league's weekly process time. Older stored configs
  *  (raw JSON, no zod re-parse) may lack processHourEt — fall back to house
@@ -241,8 +246,10 @@ async function settleClaim(
     return finish("invalid");
   }
 
-  // Roster space (accounting for the optional drop)?
-  const count = await activeRosterCount(claim.teamId);
+  // Roster space (accounting for the optional drop and any picks still owed
+  // in a live draft)?
+  const count =
+    (await activeRosterCount(claim.teamId)) + (await pendingDraftPickCount(claim.teamId));
   const net = claim.dropGsisId ? 0 : 1;
   if (count + net > rosterCap(template)) return finish("invalid");
 

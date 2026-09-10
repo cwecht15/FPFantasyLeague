@@ -5,10 +5,12 @@
  * friendly error.
  */
 
-import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
+  draftPicks,
+  drafts,
   lineups,
   lineupSlots,
   rosterEntries,
@@ -25,6 +27,25 @@ export async function activeRosterCount(teamId: number): Promise<number> {
     .select({ count: sql<number>`count(*)` })
     .from(rosterEntries)
     .where(and(eq(rosterEntries.teamId, teamId), isNull(rosterEntries.droppedAt)));
+  return Number(row?.count ?? 0);
+}
+
+/** Picks a team still owes in a draft that isn't complete. They count against
+ *  the roster cap: free agency is open during a slow draft, and without this a
+ *  team could add a free agent and then draft past the roster limit (it
+ *  happened — a 13-man roster on a 12-slot template). */
+export async function pendingDraftPickCount(teamId: number): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(draftPicks)
+    .innerJoin(drafts, eq(drafts.id, draftPicks.draftId))
+    .where(
+      and(
+        eq(draftPicks.teamId, teamId),
+        isNull(draftPicks.gsisId),
+        ne(drafts.status, "complete"),
+      ),
+    );
   return Number(row?.count ?? 0);
 }
 
@@ -53,10 +74,12 @@ export async function addFreeAgent(opts: {
 }): Promise<{ error: string | null }> {
   const { leagueId, teamId, gsisId, userId, template, dropGsisId } = opts;
 
-  const count = await activeRosterCount(teamId);
+  const count = (await activeRosterCount(teamId)) + (await pendingDraftPickCount(teamId));
   const netChange = dropGsisId ? 0 : 1;
   if (count + netChange > rosterCap(template)) {
-    return { error: `Roster is full (${rosterCap(template)} max) — drop someone first` };
+    return {
+      error: `Roster is full (${rosterCap(template)} max, counting remaining draft picks) — drop someone first`,
+    };
   }
 
   try {
