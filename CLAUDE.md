@@ -152,6 +152,16 @@ C:\Users\cwech\anaconda3\python.exe -m tools.scoring.push_scores --season 2024 -
 # --force overrides the Thursday-noon lock; --dry-run computes without writing
 ```
 
+Weekly projections (from the **repo root**) — builds the in-season projections artifact for
+the live league from the owner's weekly FantasyPoints workbook, scored through the app's own
+`scoreStatLine` under the league's stored rules. Read-only; see `tools/weekly_proj/README.md`:
+
+```powershell
+C:\Users\cwech\anaconda3\python.exe -m tools.weekly_proj.run_week --refresh
+# --refresh is required for any rerun in the same week (the sheet holds one week and is
+# overwritten); --skip-fetch rebuilds offline; --week N asserts the sheet holds that week
+```
+
 Deploy: `flyctl deploy --remote-only --yes` from `app/`. Secrets are already set on the app
 (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `EMAIL_FROM`, `SMTP_USER`, `SMTP_PASS`); change
 via `flyctl secrets set`.

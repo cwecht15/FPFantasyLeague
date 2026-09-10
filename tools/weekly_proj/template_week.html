@@ -1,0 +1,470 @@
+<title>Scott Bear Bowl Weekly</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,800&family=Mulish:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root {
+    --paper: #F0F0F0; --panel: #FAFAF9; --ink: #111111; --ink2: #55554F;
+    --line: #D6D6D1; --tint: #E7E7E2; --red: #CC3333; --red-ink: #B22B2B;
+    --on-red: #FFFFFF; --bar: #C9C9C4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #111111; --panel: #191918; --ink: #F0F0F0; --ink2: #A5A5A0;
+      --line: #2E2E2B; --tint: #222220; --red: #CC3333; --red-ink: #E86A5E;
+      --on-red: #FFFFFF; --bar: #3A3A36;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #111111; --panel: #191918; --ink: #F0F0F0; --ink2: #A5A5A0;
+    --line: #2E2E2B; --tint: #222220; --red: #CC3333; --red-ink: #E86A5E;
+    --on-red: #FFFFFF; --bar: #3A3A36;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: Mulish, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.55; margin: 0; padding: 0 16px 80px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+
+  .display, h1, h2, h3 {
+    font-family: Kanit, "Arial Narrow", sans-serif; font-style: italic; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .01em; line-height: 1.05;
+    text-wrap: balance; margin: 0;
+  }
+  .mono { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  header { padding: 44px 0 20px; border-bottom: 3px solid var(--ink); }
+  .eyebrow {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--red-ink);
+    font-weight: 700; margin-bottom: 8px;
+  }
+  h1 { font-size: clamp(40px, 7vw, 74px); }
+  h1 .yr { color: var(--red); }
+  .subhead { color: var(--ink2); max-width: 70ch; margin-top: 12px; }
+  .metaline { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: var(--ink2); }
+  .metaline b { color: var(--ink); font-weight: 700; }
+
+  section { margin-top: 42px; }
+  h2 { font-size: 26px; border-left: 6px solid var(--red); padding-left: 12px; margin-bottom: 4px; }
+  .sectionnote { color: var(--ink2); margin: 6px 0 16px; max-width: 80ch; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; }
+  .card h3 { font-size: 16px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .card ul { list-style: none; margin: 0; padding: 0; }
+  .card li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0;
+    border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .card li:last-child { border-bottom: 0; }
+  .card li .v { font-family: "JetBrains Mono", Consolas, monospace; font-weight: 700; white-space: nowrap; }
+  .card li .v.neg { color: var(--red-ink); }
+
+  /* matchup previews */
+  .mus { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .mu { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--ink); padding: 12px 14px; }
+  .mu .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; }
+  .mu .row + .row { border-top: 1px dashed var(--line); }
+  .mu .tn { font-weight: 700; font-size: 14.5px; }
+  .mu .tn.lead { color: var(--red-ink); }
+  .mu .sc { font-family: "JetBrains Mono", Consolas, monospace; font-weight: 700; font-size: 17px; }
+  .mu .foot { margin-top: 8px; font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px; color: var(--ink2); letter-spacing: .06em; }
+
+  /* team lineup cards */
+  .lus { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+  .lu { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; }
+  .lu h3 { font-size: 15px; display: flex; justify-content: space-between;
+    align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .lu h3 .tot { font-family: "JetBrains Mono", Consolas, monospace; font-style: normal; }
+  .lu table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .lu td { padding: 3px 4px; border-bottom: 1px dashed var(--line); white-space: nowrap; }
+  .lu td.sl { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px;
+    color: var(--ink2); letter-spacing: .08em; width: 46px; }
+  .lu td.nm { width: 100%; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+  .lu td.pt { text-align: right; font-family: "JetBrains Mono", Consolas, monospace; font-weight: 700; }
+  .lu tr.swap td.nm { color: var(--ink2); text-decoration: line-through; text-decoration-color: var(--red-ink); }
+  .lu .moves { margin-top: 8px; font-size: 12.5px; }
+  .lu .moves .mv { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+  .lu .moves .mv .d { font-family: "JetBrains Mono", Consolas, monospace; font-weight: 700; color: var(--red-ink); }
+  .lu .clean { margin-top: 8px; font-size: 12.5px; color: var(--ink2); }
+
+  .pos {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; font-weight: 700;
+    min-width: 44px; padding: 1px 6px; letter-spacing: .06em;
+  }
+  .pos.QB { background: var(--red); color: var(--on-red); }
+  .pos.RB { background: var(--ink); color: var(--paper); }
+  .pos.WR { border: 1.5px solid var(--ink); color: var(--ink); }
+  .pos.TE { background: var(--tint); border: 1px solid var(--line); color: var(--ink); }
+  .pos.COACH { border: 1.5px dashed var(--ink); color: var(--ink); }
+
+  .badge {
+    display: inline-block; font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px; font-weight: 700; padding: 0 5px; margin-left: 6px;
+    border: 1px solid var(--red-ink); color: var(--red-ink); vertical-align: 1px;
+  }
+  .badge.mute { border-color: var(--line); color: var(--ink2); }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  .chip {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; font-weight: 700;
+    letter-spacing: .08em; padding: 5px 14px; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); color: var(--ink2);
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .grid thead th:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+
+  .tblwrap { overflow-x: auto; border: 1px solid var(--line); background: var(--panel); }
+  table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .grid thead th {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink2);
+    padding: 9px 10px; border-bottom: 2px solid var(--ink);
+    text-align: right; white-space: nowrap; cursor: pointer; user-select: none;
+    position: sticky; top: 0; background: var(--panel);
+  }
+  .grid thead th.txt { text-align: left; }
+  .grid thead th[data-sorted] { color: var(--red-ink); }
+  .grid tbody td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .grid tbody td.txt { text-align: left; }
+  .grid tbody td.num { font-family: "JetBrains Mono", Consolas, monospace; }
+  .grid tbody tr:hover { background: var(--tint); }
+  td.strong { font-weight: 800; }
+  .playername { font-weight: 600; }
+  .teamcode { color: var(--ink2); font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; }
+  .dim { color: var(--ink2); }
+  .up { color: var(--red-ink); font-weight: 700; }
+  .lock { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10px; font-weight: 700;
+    border: 1px solid var(--line); color: var(--ink2); padding: 0 4px; }
+  .lock.on { border-color: var(--red-ink); color: var(--red-ink); }
+  .warn { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--red);
+    padding: 10px 14px; margin-top: 12px; font-size: 13px; color: var(--ink2); }
+  .warn b { color: var(--ink); }
+
+  footer { margin-top: 56px; border-top: 3px solid var(--ink); padding-top: 16px;
+    font-size: 12.5px; color: var(--ink2); }
+  footer p { max-width: 90ch; }
+  footer h3 { font-size: 14px; margin: 14px 0 4px; color: var(--ink); }
+
+  @media print {
+    :root { --paper:#FFF; --panel:#FFF; --ink:#111; --ink2:#444; --line:#BBB; --tint:#EEE; --bar:#DDD; }
+    body { padding: 0; font-size: 11px; }
+    .filters { display: none; }
+    .grid thead th { position: static; }
+    section { break-inside: avoid-page; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="subhead">Every projection here is scored through the league&rsquo;s own rules, not PPR.
+      Yards, touchdowns and receptions are worth nothing: points come from throw quality, separation
+      per route, broken tackles, yards after contact, first reads and playcalling.</p>
+    <div class="metaline" id="metaline"></div>
+  </header>
+
+  <section>
+    <h2>This week&rsquo;s matchups</h2>
+    <p class="sectionnote">Projected totals from each team&rsquo;s <b>current</b> starters. A slot with
+      nobody in it counts as zero, which is exactly what it will score.</p>
+    <div class="mus" id="matchups"></div>
+    <div id="warnings"></div>
+  </section>
+
+  <section>
+    <h2>Start / sit</h2>
+    <p class="sectionnote">The optimal lineup respects kickoff locks as of the generation time above,
+      so every move listed is one that could still be made. Struck-through names are the starters the
+      optimizer would replace.</p>
+    <div class="lus" id="lineups"></div>
+  </section>
+
+  <section>
+    <h2>The board</h2>
+    <p class="sectionnote">Every projected player this week. <b>VOR</b> is points above the best free
+      agent at the position, so it is what starting him is actually worth. <b>&Delta;DK</b> compares the
+      DraftKings positional rank with this league&rsquo;s rank &mdash; a big positive number means this
+      scoring likes him far more than the industry does. Click a column to sort.</p>
+    <div class="filters" id="boardfilters"></div>
+    <div class="tblwrap"><table class="grid" id="board"></table></div>
+  </section>
+
+  <section>
+    <h2>Free agents</h2>
+    <p class="sectionnote">Unrostered and projected this week. A player locks when his NFL team kicks
+      off and stays locked until waivers process Wednesday 3:00 AM ET, so the pill below is live.</p>
+    <div class="filters" id="fafilters"></div>
+    <div class="tblwrap"><table class="grid" id="fatbl"></table></div>
+  </section>
+
+  <section>
+    <h2>How this league scores</h2>
+    <p class="sectionnote">Pulled live from the league settings when this page was built. Only
+      components that actually score are shown.</p>
+    <div class="cards" id="rulecards"></div>
+  </section>
+
+  <footer id="method"></footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+const $ = (sel, el) => (el || document).querySelector(sel);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DASH = "—";
+const MINUS = "−";
+const fmt = (v, nd) => v == null ? DASH : Number(v).toFixed(nd == null ? 1 : nd);
+const signed = v => v == null ? DASH : (v > 0 ? "+" : v < 0 ? MINUS : "") + Math.abs(Number(v)).toFixed(1);
+const P = DATA.players;
+const pmap = Object.fromEntries(P.map(p => [p.id, p]));
+const tmap = Object.fromEntries(DATA.teams.map(t => [t.id, t]));
+const faSet = new Set(DATA.fa);
+const isLocked = p => !!(p && p.k && new Date(p.k).getTime() <= Date.now());
+const posOrder = { QB:0, RB:1, WR:2, TE:3, COACH:4 };
+
+/* ---------- masthead ---------- */
+const genLocal = new Date(DATA.generated).toLocaleString([], {
+  weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+$("#eyebrow").textContent = "The Scott Bear Bowl · Season 1 · Week " + DATA.week;
+$("#title").innerHTML = "Week " + DATA.week + " <span class=\"yr\">Projections</span>";
+$("#metaline").innerHTML =
+  `<span>BUILT <b>${esc(genLocal)}</b></span>` +
+  `<span>SOURCE <b>${esc(DATA.sheet.workbook)}</b></span>` +
+  `<span>SCORING <b>LIVE RULES v${DATA.scoringVersion}</b></span>` +
+  `<span>PLAYERS <b>${P.filter(x => x.p !== "COACH").length}</b> + <b>${P.filter(x => x.p === "COACH").length}</b> COACHES</span>`;
+
+/* ---------- matchups ---------- */
+$("#matchups").innerHTML = DATA.matchups.map(m => {
+  const h = tmap[m.h], a = tmap[m.a];
+  if (!h) return "";
+  if (!a) return `<div class="mu"><div class="row"><span class="tn">${esc(h.name)}</span>` +
+    `<span class="sc">${fmt(m.hp)}</span></div><div class="foot">BYE WEEK</div></div>`;
+  const hw = m.hp >= m.ap;
+  const marg = Math.abs(m.hp - m.ap);
+  const left = (h.left > 0.05 ? 1 : 0) + (a.left > 0.05 ? 1 : 0);
+  return `<div class="mu">
+    <div class="row"><span class="tn${hw ? " lead" : ""}">${esc(h.name)}</span><span class="sc">${fmt(m.hp)}</span></div>
+    <div class="row"><span class="tn${hw ? "" : " lead"}">${esc(a.name)}</span><span class="sc">${fmt(m.ap)}</span></div>
+    <div class="foot">${esc((hw ? h.name : a.name).toUpperCase())} BY ${fmt(marg)}` +
+    (left ? ` · ${left} LINEUP${left > 1 ? "S" : ""} NOT OPTIMAL` : " · BOTH LINEUPS OPTIMAL") +
+    `</div></div>`;
+}).join("");
+
+if (DATA.warnings.length) {
+  $("#warnings").innerHTML = `<div class="warn"><b>Worth knowing:</b> ` +
+    DATA.warnings.map(esc).join(" &middot; ") + `</div>`;
+}
+
+/* ---------- start / sit ---------- */
+const slotLabel = s => s.s === "COACH" ? "PC" : s.s;
+const pcell = id => {
+  const p = pmap[id];
+  if (!p) return `<span class="dim">${DASH}</span>`;
+  const flags = (p.fl || []).filter(f => ["bye","ir","ps","estroutes"].includes(f));
+  return `<span class="playername">${esc(p.n)}</span> <span class="teamcode">${esc(p.t || "")}` +
+    (p.opp ? " v " + esc(p.opp) : "") + `</span>` +
+    flags.map(f => `<span class="badge${f === "estroutes" ? " mute" : ""}">${f.toUpperCase()}</span>`).join("");
+};
+$("#lineups").innerHTML = DATA.teams.slice().sort((a, b) => b.left - a.left).map(t => {
+  const optIds = new Set(t.opt.slots.map(s => s.id).filter(Boolean));
+  const rows = t.cur.slots.map(s => {
+    const p = pmap[s.id];
+    const swap = s.id && !optIds.has(s.id);
+    return `<tr class="${swap ? "swap" : ""}">
+      <td class="sl">${slotLabel(s)}</td>
+      <td class="nm">${pcell(s.id)}${s.lk ? ' <span class="lock on">LOCK</span>' : ""}</td>
+      <td class="pt">${p ? fmt(p.pts) : DASH}</td></tr>`;
+  }).join("");
+  const moves = t.moves.length
+    ? `<div class="moves">` + t.moves.map(m => {
+        const inp = pmap[m.in], outp = pmap[m.out];
+        return `<div class="mv"><span>Start <b>${esc(inp ? inp.n : m.in)}</b> ${fmt(inp ? inp.pts : null)}` +
+          (outp ? `, sit ${esc(outp.n)} ${fmt(outp.pts)}` : ", into an empty slot") + `</span>` +
+          `<span class="d">${signed(m.d)}</span></div>`;
+      }).join("") +
+      `<div class="mv"><span class="dim">Net</span><span class="d">${signed(t.left)}</span></div></div>`
+    : `<div class="clean">Lineup is already optimal.</div>`;
+  return `<div class="lu">
+    <h3><span>${esc(t.name)}</span><span class="tot">${fmt(t.cur.total)}</span></h3>
+    <table><tbody>${rows}</tbody></table>
+    ${moves}
+    ${t.adds && t.adds.length ? `<div class="clean">Best add: <b>${esc(pmap[t.adds[0].id].n)}</b> (+${fmt(t.adds[0].gain)})</div>` : ""}
+  </div>`;
+}).join("");
+
+/* ---------- generic sortable table ---------- */
+function renderTable(el, cols, rows, state) {
+  const arrow = c => state.key === c.key ? (state.dir === 1 ? " ↑" : " ↓") : "";
+  el.innerHTML = "<thead><tr>" + cols.map(c =>
+    `<th class="${c.txt ? "txt" : ""}" data-key="${c.key}" tabindex="0" role="columnheader" ` +
+    `aria-sort="${state.key === c.key ? (state.dir === 1 ? "ascending" : "descending") : "none"}"` +
+    `${state.key === c.key ? ' data-sorted=""' : ""}>${c.h}${arrow(c)}</th>`
+  ).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + cols.map(c => c.cell(r)).join("") + "</tr>").join("") +
+    "</tbody>";
+  el.querySelectorAll("th").forEach(th => {
+    const sort = () => {
+      const key = th.dataset.key;
+      state.dir = state.key === key ? -state.dir : -1;
+      state.key = key;
+      state.rerender();
+    };
+    th.onclick = sort;
+    th.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sort(); }
+    };
+  });
+}
+const td = (v, cls) => `<td class="${cls || ""}">${v == null ? DASH : v}</td>`;
+const num = (v, nd, cls) => td(v == null ? null : Number(v).toFixed(nd == null ? 1 : nd), "num " + (cls || ""));
+const posCell = r => td(`<span class="pos ${r.p}">${r.p}${r.pr}</span>`, "txt");
+const nameCell = r => td(`<span class="playername">${esc(r.n)}</span>` +
+  (r.own == null ? '<span class="badge">FA</span>' : "") +
+  ((r.fl || []).includes("estroutes") ? '<span class="badge mute">EST RTE</span>' : "") +
+  ((r.fl || []).includes("nohist") ? '<span class="badge mute">NO DATA</span>' : "") +
+  ((r.fl || []).includes("ir") ? '<span class="badge">IR</span>' : "") +
+  ((r.fl || []).includes("ps") ? '<span class="badge">PS</span>' : ""), "txt");
+const ownCell = r => td(r.own == null ? '<span class="dim">free agent</span>'
+  : `<span class="dim">${esc((tmap[r.own] || {}).name || "")}</span>`, "txt");
+const kickCell = r => td(r.kt
+  ? `<span class="teamcode">${esc(r.kt)}</span>` +
+    (isLocked(r) ? ' <span class="lock on">LOCK</span>' : "")
+  : `<span class="dim">bye</span>`, "txt");
+const dkDelta = r => (r.ctx && r.ctx.dkr && r.pr) ? (parseInt(String(r.ctx.dkr).replace(/\D/g, ""), 10) - r.pr) : null;
+
+/* ---------- board ---------- */
+const boardCols = [
+  { key: "pr", h: "#", cell: r => num(r.pr, 0, "strong") },
+  { key: "n", h: "Player", txt: 1, cell: nameCell },
+  { key: "p", h: "Pos", txt: 1, cell: posCell },
+  { key: "t", h: "Team", txt: 1, cell: r => td(`<span class="teamcode">${esc(r.t || "")}</span>`, "txt") },
+  { key: "opp", h: "Opp", txt: 1, cell: r => td(`<span class="teamcode">${esc(r.opp || "")}</span>`, "txt") },
+  { key: "pts", h: "Proj", cell: r => num(r.pts, 1, "strong") },
+  { key: "vor", h: "VOR", cell: r => num(r.vor, 1) },
+  { key: "dk", h: "ΔDK", cell: r => { const d = dkDelta(r); return d == null ? td(null) : num(d, 0, d >= 8 ? "up" : "dim"); } },
+  { key: "own", h: "Roster", txt: 1, cell: ownCell },
+  { key: "k", h: "Kickoff", txt: 1, cell: kickCell },
+];
+const boardState = { key: "pts", dir: -1, pos: "ALL", faOnly: false };
+boardState.rerender = () => {
+  let rows = P.filter(x => boardState.pos === "ALL" || x.p === boardState.pos);
+  if (boardState.faOnly) rows = rows.filter(x => x.own == null);
+  const k = boardState.key;
+  rows = rows.slice().sort((a, b) => {
+    const get = x => k === "dk" ? dkDelta(x) : k === "own" ? (x.own == null ? "" : (tmap[x.own] || {}).name) : x[k];
+    const av = get(a), bv = get(b);
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return (av < bv ? -1 : av > bv ? 1 : 0) * boardState.dir * (typeof av === "string" ? -1 : 1);
+  });
+  renderTable($("#board"), boardCols, rows.slice(0, 260), boardState);
+};
+$("#boardfilters").innerHTML = ["ALL", "QB", "RB", "WR", "TE", "COACH"].map(p =>
+  `<button class="chip" data-pos="${p}" aria-pressed="${p === "ALL"}">${p}</button>`).join("") +
+  `<button class="chip" id="faonly" aria-pressed="false">FREE AGENTS ONLY</button>`;
+$("#boardfilters").querySelectorAll(".chip[data-pos]").forEach(b => b.onclick = () => {
+  boardState.pos = b.dataset.pos;
+  $("#boardfilters").querySelectorAll(".chip[data-pos]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  boardState.rerender();
+});
+$("#faonly").onclick = () => {
+  boardState.faOnly = !boardState.faOnly;
+  $("#faonly").setAttribute("aria-pressed", String(boardState.faOnly));
+  boardState.rerender();
+};
+boardState.rerender();
+
+/* ---------- free agents ---------- */
+const faCols = [
+  { key: "pr", h: "Pos rk", cell: r => num(r.pr, 0, "dim") },
+  { key: "n", h: "Player", txt: 1, cell: nameCell },
+  { key: "p", h: "Pos", txt: 1, cell: posCell },
+  { key: "t", h: "Team", txt: 1, cell: r => td(`<span class="teamcode">${esc(r.t || "")}</span>`, "txt") },
+  { key: "opp", h: "Opp", txt: 1, cell: r => td(`<span class="teamcode">${esc(r.opp || "")}</span>`, "txt") },
+  { key: "pts", h: "Proj", cell: r => num(r.pts, 1, "strong") },
+  { key: "ctx.rte", h: "Rte", cell: r => num(r.ctx && r.ctx.rte, 0, "dim") },
+  { key: "ctx.tgt", h: "Tgt", cell: r => num(r.ctx && r.ctx.tgt, 1, "dim") },
+  { key: "ctx.att", h: "Rush", cell: r => num(r.ctx && r.ctx.att, 1, "dim") },
+  { key: "k", h: "Kickoff", txt: 1, cell: kickCell },
+];
+const faState = { key: "pts", dir: -1, pos: "ALL" };
+faState.rerender = () => {
+  let rows = P.filter(x => faSet.has(x.id) && (faState.pos === "ALL" || x.p === faState.pos));
+  const k = faState.key;
+  rows = rows.slice().sort((a, b) => {
+    const get = x => k.startsWith("ctx.") ? (x.ctx || {})[k.slice(4)] : x[k];
+    const av = get(a), bv = get(b);
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return (av < bv ? -1 : av > bv ? 1 : 0) * faState.dir * (typeof av === "string" ? -1 : 1);
+  });
+  renderTable($("#fatbl"), faCols, rows.slice(0, 80), faState);
+};
+$("#fafilters").innerHTML = ["ALL", "QB", "RB", "WR", "TE"].map(p =>
+  `<button class="chip" data-pos="${p}" aria-pressed="${p === "ALL"}">${p}</button>`).join("");
+$("#fafilters").querySelectorAll(".chip").forEach(b => b.onclick = () => {
+  faState.pos = b.dataset.pos;
+  $("#fafilters").querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  faState.rerender();
+});
+faState.rerender();
+
+/* ---------- scoring cards ---------- */
+const R = DATA.rules, A = R.advanced || {}, C = R.coaching || {};
+const sign = v => typeof v === "number" ? (v > 0 ? "+" + v : String(v)) : v;
+const ruleCards = [
+  ["QB", [["Accurate throw", A.accurateThrow], ["Catchable throw", A.catchableThrow],
+          ["Hero throw", A.heroThrow], ["Turnover-worthy throw", A.turnoverWorthyThrow],
+          ["Incompletion", A.incompletion], ["Sack taken", A.sackTaken]]],
+  ["RB", [["Missed tackle forced", A.missedTackleForced],
+          ["Rush YACO, per yd", A.yacoYd], ["Rec YACO, per yd", A.recYacoYd],
+          ["Explosive rush (10+)", A.rushExplosive], ["Explosive catch (15+)", A.recExplosive]]],
+  ["WR", [["Sep grade +1 / +2 / +3", `${sign(A.sepP1)} / ${sign(A.sepP2)} / ${sign(A.sepP3)}`],
+          ["Sep grade " + MINUS + "1 / " + MINUS + "2", `${sign(A.sepM1)} / ${sign(A.sepM2)}`],
+          ["Receiving first down", A.recFirstDown], ["Hero catch", A.heroCatch], ["Drop", A.drop]]],
+  ["TE", [["First-read target", A.recFirstRead], ["Drop", A.drop]]],
+  ["COACH", [["Play-action dropback", C.paDropback], ["Motion dropback", C.motionDropback],
+             ["4th-down go", C.fourthDownGo], ["Run on 2nd &amp; 7+", C.run2ndLong],
+             ["Deep shot on 2nd &amp; short", C.deepAtt2ndShort],
+             ["Team win", C.win], ["30+ points scored", C.score30Bonus]]],
+];
+$("#rulecards").innerHTML = ruleCards.map(([pos, rows]) => `
+  <div class="card"><h3><span class="pos ${pos}">${pos === "COACH" ? "PC" : pos}</span></h3><ul>` +
+  rows.filter(([, v]) => v !== undefined && v !== null && v !== 0).map(([label, v]) => {
+    const raw = String(sign(v));
+    const neg = raw.trim().startsWith("-") || raw.includes(MINUS);
+    return `<li><span>${label}</span><span class="v${neg ? " neg" : ""}">${raw.replace(/-/g, MINUS)}</span></li>`;
+  }).join("") + `</ul></div>`).join("");
+
+/* ---------- method ---------- */
+$("#method").innerHTML = `
+  <h3>How these numbers are made</h3>
+  <p>Volume comes from the weekly FantasyPoints projections workbook: dropbacks, attempts,
+  completions, carries, targets, receptions and routes for every player with a game this week.
+  Charting rates come from 2024 and 2025 play-by-play, weighted toward 2025 and shrunk toward the
+  position mean so a small sample cannot run away. Rookies without an NFL snap use the average
+  rookie-year rate for their draft-capital bucket. Volume times rate gives a projected charting
+  line, which is scored by the app&rsquo;s own scoring engine under the rules shown above, so a
+  number here and a number on the site mean the same thing.</p>
+  <h3>What it does not know</h3>
+  <p>Incompletions are attempts minus completions and sacks come from the sheet, both exact.
+  Everything else is an expectation, so nobody will actually score their projection. The coaching
+  slot is the clearest case: a win is worth ${sign(C.win)} but the projection carries the
+  probability of a win, and the 30-point bonus works the same way, so a coach&rsquo;s real score is
+  lumpy where the projection is smooth. There is no 2026 charting data yet, so every rate is still
+  a 2024-2025 rate. Rookies are the least reliable line on this page.</p>
+  <h3>Reading the lineup cards</h3>
+  <p>Locks come from the NFL schedule, so a player is locked from his own team&rsquo;s kickoff.
+  The optimizer only proposes moves it could still make at the time shown at the top of the page,
+  and it follows the league&rsquo;s stored roster template, which is
+  ${DATA.template.map(s => (s.count > 1 ? s.count + "×" : "") + (s.slot === "COACH" ? "PC" : s.slot)).join(" / ")}.</p>
+`;
+</script>

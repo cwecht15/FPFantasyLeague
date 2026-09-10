@@ -63,6 +63,13 @@ and report new picks / on-the-clock / picks until cwecht is up / top-5 queue; at
 final-publish, recap, and delete the job. Cron jobs die with the session and expire after
 7 days — a new session must recreate the job with that prompt rather than assume it runs.
 
+## In-season successor
+
+The draft is over. Week-to-week projections live in `tools/weekly_proj/`, which reuses this
+folder's `out/player_rates.csv`, `rookie_priors.csv` and `coach_stat_lines.csv` unchanged.
+Re-run `rates.py` here (with 2026 added to `SEASONS`) once NFL_Data has 2026 charting, and
+every weekly build picks it up.
+
 ## Known caveats
 
 - Backtest (2024 rates -> 2025 volume): Spearman ~0.90 RB/TE, ~0.75 QB/WR. Charting
@@ -70,6 +77,8 @@ final-publish, recap, and delete the job. Cron jobs die with the session and exp
 - Sheet columns are resolved by header; `fetch_sheet` caches to `out/` and only refetches
   with `--refresh`. The ADP tab joins by name+team (its IDs are not GSIS).
 - `league_rules.json` is a snapshot; re-pull it if scoring settings change (the guide's
-  scoring cards and every point value depend on it).
+  scoring cards and every point value depend on it). `tools.weekly_proj.snapshot_rules`
+  generates one from prod, and `score_projections.ts` now takes a rules path as its third
+  argument, defaulting to this folder's copy.
 - QB sack rates prefer `qb_sack_rate_projections_2026_weighted.csv`; QBs who changed
   teams get an extra 15% shrink on throw-quality rates.

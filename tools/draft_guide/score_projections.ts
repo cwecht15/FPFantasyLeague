@@ -9,7 +9,12 @@
  * the coach model.
  *
  * Run from app/:  npx tsx ../tools/draft_guide/score_projections.ts
+ * Args:           [statLinesCsv] [pointsJson] [rulesJson]  (all optional)
  * Out:            out/projected_points.json  [{gsisId, points, breakdown}]
+ *
+ * The weekly pipeline (tools/weekly_proj) reuses this with games = 1, which
+ * makes the per-game round trip a no-op, and passes its own freshly pulled
+ * league_rules.json as the third argument.
  */
 
 import * as fs from "node:fs";
@@ -56,9 +61,8 @@ const NUMERIC_FIELDS: (keyof RawStatLine)[] = [
 function main() {
   const inPath = process.argv[2] ?? path.join(OUT, "projected_stat_lines.csv");
   const outPath = process.argv[3] ?? path.join(OUT, "projected_points.json");
-  const rules = JSON.parse(
-    fs.readFileSync(path.join(OUT, "league_rules.json"), "utf8"),
-  ) as ScoringRules;
+  const rulesPath = process.argv[4] ?? path.join(OUT, "league_rules.json");
+  const rules = JSON.parse(fs.readFileSync(rulesPath, "utf8")) as ScoringRules;
   const rows = parseCsv(fs.readFileSync(inPath, "utf8"));
 
   const results = rows.map((r) => {

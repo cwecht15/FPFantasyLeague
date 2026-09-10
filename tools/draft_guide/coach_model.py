@@ -99,6 +99,15 @@ def _read(conn, sql: str, params: dict | None = None) -> pd.DataFrame:
         return pd.DataFrame(cur.fetchall(), columns=cols)
 
 
+def score_sigma(conn) -> float:
+    """Mean within-(season, team) SD of points scored, 2021-2025 REG.
+
+    The spread of one team's score around its own average. Shared with the
+    weekly pipeline so season and weekly COACH numbers use one definition.
+    """
+    return float(_read(conn, _SIGMA_SQL).iloc[0, 0])
+
+
 def scheme_rates(conn) -> pd.DataFrame:
     frames = []
     for season, w in SEASON_W.items():
@@ -170,7 +179,7 @@ def main() -> None:
     conn.set_session(readonly=True)
     rates = scheme_rates(conn)
     staff = staff_changes(conn)
-    sigma = float(_read(conn, _SIGMA_SQL).iloc[0, 0])
+    sigma = score_sigma(conn)
     conn.close()
 
     t = rates.merge(staff, on="team", how="left").merge(volume_2026(), on="team", how="left")
