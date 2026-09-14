@@ -254,3 +254,58 @@ describe("scoreStatLine — expected fantasy points (xFP)", () => {
     expect(scoreStatLine(line, r, { position: "QB" }).points).toBeCloseTo(0, 2); // off for QB
   });
 });
+
+describe("scoreStatLine — detail (raw × rate reconciles with breakdown)", () => {
+  const rules = {
+    ...SCORING_PRESETS.fp_advanced,
+    advanced: { ...DEFAULT_ADVANCED, catchableThrow: 0.5, rushMtf: 1, recMtf: 1, recYacoYd: 0.05, recFirstDown: 1, recFirstRead: 0.5, rushExplosive: 7, recExplosive: 5, sepM2: -1, sepM1: -0.5, sepP1: 0.5, sepP2: 1, sepP3: 1.5, sepP4: 2, incompletion: -1, epaPerDropback: 10, epaTotal: 0.5, sackTaken: -1, deepPassYd: 0.25, deepPassFirstDown: 0.5, deepPassTd: 4 },
+    coaching: { ...DEFAULT_COACHING, fourthDownGo: 1, run2ndLong: -0.5, deepAtt2ndShort: 1 },
+    xfp: { qb: 1, rb: 1.1, wr: 1, te: 1.25 },
+    bonuses: [{ stat: "rush_yds" as const, threshold: 100, points: 3 }],
+  };
+  // Every raw field populated, so every component that the rules turn on fires.
+  const line = {
+    passYds: 312, passTd: 2, passInt: 1, pass2pt: 1, rushYds: 143, rushTd: 1, rush2pt: 1,
+    receptions: 7, recYds: 88, recTd: 1, rec2pt: 1, fumblesLost: 1,
+    accurateThrows: 25, catchableThrows: 32, toWorthyThrows: 2, heroThrows: 3, passAirYds: 280,
+    heroCatches: 2, drops: 1, recAirYds: 120, recYac: 45, recYaco: 30, recFd: 5, firstReadTargets: 9,
+    mtf: 15, rushMtf: 11, recMtf: 4, explosivePlays: 4, rushExplosives: 3, recExplosives: 1, xfp: 14.7,
+    passYds5p: 250, passTd5p: 2, passFd5p: 11, sacksTaken: 3, incompletions: 13, dropbacks: 38, epaTotal: 8.1,
+    routes: 30, sepTotal: 41, sepM2: 2, sepM1: 4, sepP1: 10, sepP2: 8, sepP3: 5, sepP4: 1,
+    rushStuffs: 3, rushYbc: 60, rushYaco: 86,
+    fgMade0_19: 0, fgMade20_29: 1, fgMade30_39: 1, fgMade40_49: 2, fgMade50plus: 1, fgMissed: 1, xpMade: 3,
+    dstSacks: 4, dstInt: 1, dstFumRec: 1, dstTd: 1, dstSafeties: 1, dstBlocks: 1, pointsAllowed: 13,
+    paDropbacks: 12, motionDropbacks: 20, fourthDownAttempts: 2, run2ndLong: 6, deep2ndShort: 1,
+    teamWin: 1, teamPointsScored: 31,
+  };
+
+  for (const position of ["QB", "RB", "WR", "TE", "COACH", "K", "DST"]) {
+    it(`${position}: every breakdown entry has a detail whose raw × rate equals its points`, () => {
+      const { breakdown, detail } = scoreStatLine(line, rules, { position, isTightEnd: position === "TE" });
+      expect(Object.keys(breakdown).length).toBeGreaterThan(3);
+      for (const [key, pts] of Object.entries(breakdown)) {
+        expect(detail[key], `detail missing for ${key}`).toBeDefined();
+        const { raw, rate } = detail[key];
+        if (rate !== null) {
+          expect(raw * rate, `${key}: ${raw} × ${rate}`).toBeCloseTo(pts, 2);
+        }
+      }
+    });
+  }
+
+  it("threshold components expose the stat they were judged on with a null rate", () => {
+    const rb = scoreStatLine(line, rules, { position: "RB" }).detail;
+    expect(rb.bonus_rush_yds).toEqual({ raw: 143, rate: null });
+    const coach = scoreStatLine(line, rules, { position: "COACH" }).detail;
+    expect(coach.scored30Plus).toEqual({ raw: 31, rate: null });
+    const dst = scoreStatLine(line, rules, { position: "DST" }).detail;
+    expect(dst.dstPointsAllowed.raw).toBe(13);
+    expect(dst.dstPointsAllowed.rate).toBeNull();
+  });
+
+  it("yards-per-point components report the per-yard rate", () => {
+    const { detail } = scoreStatLine({ rushYds: 143 }, SCORING_PRESETS.ppr, { position: "RB" });
+    expect(detail.rushYds.raw).toBe(143);
+    expect(detail.rushYds.rate).toBeCloseTo(0.1, 6);
+  });
+});

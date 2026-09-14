@@ -65,7 +65,7 @@ export default async function MatchupDetailPage({
             <>
               <div className="truncate text-[13.5px] font-bold">
                 {s.gsisId ? (
-                  <PlayerName slug={slug} gsisId={s.gsisId} name={s.playerName} />
+                  <PlayerName slug={slug} gsisId={s.gsisId} name={s.playerName} week={m.week} />
                 ) : (
                   s.playerName
                 )}

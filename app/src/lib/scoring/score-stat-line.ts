@@ -98,11 +98,24 @@ export interface RawStatLine {
   idpDefTd?: number;
 }
 
+export interface ComponentDetail {
+  /** The raw stat the component was computed from (count, yards, EPA per dropback, …). */
+  raw: number;
+  /**
+   * Points per unit of `raw`, so `raw × rate` reproduces the component's points.
+   * null when the component isn't a simple product — yardage bonuses, points-allowed
+   * brackets, the 30-point coaching bonus — where `raw` is the threshold stat instead.
+   */
+  rate: number | null;
+}
+
 export interface ScoreResult {
   /** Total fantasy points, rounded to 2 decimals. */
   points: number;
   /** Per-component contribution (only nonzero entries), for box-score display. */
   breakdown: Record<string, number>;
+  /** The raw stat and rate behind each `breakdown` entry (same keys), for "raw × rate = pts" display. */
+  detail: Record<string, ComponentDetail>;
 }
 
 const n = (v: number | undefined) => v ?? 0;
@@ -122,8 +135,15 @@ export function scoreStatLine(
   opts: { isTightEnd?: boolean; position?: string } = {},
 ): ScoreResult {
   const b: Record<string, number> = {};
-  const add = (key: string, v: number) => {
-    if (v !== 0) b[key] = (b[key] ?? 0) + v;
+  const det: Record<string, ComponentDetail> = {};
+  // `raw` / `rate` describe how `v` was computed (v === raw * rate for linear
+  // components); `v` itself is still passed pre-computed so points are
+  // bit-for-bit what they were before detail existed.
+  const add = (key: string, v: number, raw?: number, rate: number | null = null) => {
+    if (v !== 0) {
+      b[key] = (b[key] ?? 0) + v;
+      if (raw !== undefined) det[key] = { raw, rate };
+    }
   };
   const finish = (): ScoreResult => {
     let total = 0;
@@ -131,34 +151,34 @@ export function scoreStatLine(
       b[key] = Math.round(b[key] * 100) / 100;
       total += b[key];
     }
-    return { points: Math.round(total * 100) / 100, breakdown: b };
+    return { points: Math.round(total * 100) / 100, breakdown: b, detail: det };
   };
 
   // ---- passing ----
   // Yards-per-point fields are divisors; 0 (or negative) means the component
   // is OFF, not infinite — keeps the Lab's "zero out all" semantics sane.
-  if (rules.passYdsPerPoint > 0) add("passYds", n(stats.passYds) / rules.passYdsPerPoint);
-  add("passTd", n(stats.passTd) * rules.passTd);
-  add("interception", n(stats.passInt) * rules.interception);
-  add("pass2pt", n(stats.pass2pt) * rules.pass2pt);
+  if (rules.passYdsPerPoint > 0) add("passYds", n(stats.passYds) / rules.passYdsPerPoint, n(stats.passYds), 1 / rules.passYdsPerPoint);
+  add("passTd", n(stats.passTd) * rules.passTd, n(stats.passTd), rules.passTd);
+  add("interception", n(stats.passInt) * rules.interception, n(stats.passInt), rules.interception);
+  add("pass2pt", n(stats.pass2pt) * rules.pass2pt, n(stats.pass2pt), rules.pass2pt);
 
   // ---- rushing ----
-  if (rules.rushYdsPerPoint > 0) add("rushYds", n(stats.rushYds) / rules.rushYdsPerPoint);
-  add("rushTd", n(stats.rushTd) * rules.rushTd);
-  add("rush2pt", n(stats.rush2pt) * rules.rush2pt);
+  if (rules.rushYdsPerPoint > 0) add("rushYds", n(stats.rushYds) / rules.rushYdsPerPoint, n(stats.rushYds), 1 / rules.rushYdsPerPoint);
+  add("rushTd", n(stats.rushTd) * rules.rushTd, n(stats.rushTd), rules.rushTd);
+  add("rush2pt", n(stats.rush2pt) * rules.rush2pt, n(stats.rush2pt), rules.rush2pt);
 
   // ---- receiving ----
   const recPts =
     opts.isTightEnd && rules.tePremiumReception !== undefined
       ? rules.tePremiumReception
       : rules.reception;
-  add("receptions", n(stats.receptions) * recPts);
-  if (rules.recYdsPerPoint > 0) add("recYds", n(stats.recYds) / rules.recYdsPerPoint);
-  add("recTd", n(stats.recTd) * rules.recTd);
-  add("rec2pt", n(stats.rec2pt) * rules.rec2pt);
+  add("receptions", n(stats.receptions) * recPts, n(stats.receptions), recPts);
+  if (rules.recYdsPerPoint > 0) add("recYds", n(stats.recYds) / rules.recYdsPerPoint, n(stats.recYds), 1 / rules.recYdsPerPoint);
+  add("recTd", n(stats.recTd) * rules.recTd, n(stats.recTd), rules.recTd);
+  add("rec2pt", n(stats.rec2pt) * rules.rec2pt, n(stats.rec2pt), rules.rec2pt);
 
   // ---- misc ----
-  add("fumbleLost", n(stats.fumblesLost) * rules.fumbleLost);
+  add("fumbleLost", n(stats.fumblesLost) * rules.fumbleLost, n(stats.fumblesLost), rules.fumbleLost);
 
   // ---- per-game yardage bonuses (weekly totals) ----
   for (const bonus of rules.bonuses ?? []) {
@@ -168,28 +188,28 @@ export function scoreStatLine(
         : bonus.stat === "rush_yds"
           ? n(stats.rushYds)
           : n(stats.recYds);
-    if (total >= bonus.threshold) add(`bonus_${bonus.stat}`, bonus.points);
+    if (total >= bonus.threshold) add(`bonus_${bonus.stat}`, bonus.points, total, null);
   }
 
   // ---- kicking ----
   const k = rules.kicking;
   const fg0_39 = n(stats.fgMade0_19) + n(stats.fgMade20_29) + n(stats.fgMade30_39);
-  add("fg0_39", fg0_39 * k.fg0_39);
-  add("fg40_49", n(stats.fgMade40_49) * k.fg40_49);
-  add("fg50plus", n(stats.fgMade50plus) * k.fg50plus);
-  add("xp", n(stats.xpMade) * k.xp);
-  add("fgMiss", n(stats.fgMissed) * k.fgMiss);
+  add("fg0_39", fg0_39 * k.fg0_39, fg0_39, k.fg0_39);
+  add("fg40_49", n(stats.fgMade40_49) * k.fg40_49, n(stats.fgMade40_49), k.fg40_49);
+  add("fg50plus", n(stats.fgMade50plus) * k.fg50plus, n(stats.fgMade50plus), k.fg50plus);
+  add("xp", n(stats.xpMade) * k.xp, n(stats.xpMade), k.xp);
+  add("fgMiss", n(stats.fgMissed) * k.fgMiss, n(stats.fgMissed), k.fgMiss);
 
   // ---- team defense (DST) ----
   const d = rules.dst;
-  add("dstSack", n(stats.dstSacks) * d.sack);
-  add("dstInt", n(stats.dstInt) * d.int);
-  add("dstFumRec", n(stats.dstFumRec) * d.fumRec);
-  add("dstTd", n(stats.dstTd) * d.td);
-  add("dstSafety", n(stats.dstSafeties) * d.safety);
-  add("dstBlock", n(stats.dstBlocks) * d.blockedKick);
+  add("dstSack", n(stats.dstSacks) * d.sack, n(stats.dstSacks), d.sack);
+  add("dstInt", n(stats.dstInt) * d.int, n(stats.dstInt), d.int);
+  add("dstFumRec", n(stats.dstFumRec) * d.fumRec, n(stats.dstFumRec), d.fumRec);
+  add("dstTd", n(stats.dstTd) * d.td, n(stats.dstTd), d.td);
+  add("dstSafety", n(stats.dstSafeties) * d.safety, n(stats.dstSafeties), d.safety);
+  add("dstBlock", n(stats.dstBlocks) * d.blockedKick, n(stats.dstBlocks), d.blockedKick);
   if (stats.pointsAllowed !== undefined) {
-    add("dstPointsAllowed", pointsAllowedScore(stats.pointsAllowed, d.paBrackets));
+    add("dstPointsAllowed", pointsAllowedScore(stats.pointsAllowed, d.paBrackets), stats.pointsAllowed, null);
   }
 
   // ---- advanced charting (optional) ----
@@ -205,55 +225,60 @@ export function scoreStatLine(
       scopeHasPosition(a.scope, key, pos);
     const scoresPassing = PASSING_POSITIONS.has(pos);
 
-    add("accurateThrow", n(stats.accurateThrows) * a.accurateThrow);
-    add("catchableThrow", n(stats.catchableThrows) * n(a.catchableThrow));
-    add("turnoverWorthy", n(stats.toWorthyThrows) * a.turnoverWorthyThrow);
-    add("heroThrow", n(stats.heroThrows) * a.heroThrow);
-    if (has("heroCatch")) add("heroCatch", n(stats.heroCatches) * a.heroCatch);
-    if (has("drop")) add("drop", n(stats.drops) * a.drop);
+    add("accurateThrow", n(stats.accurateThrows) * a.accurateThrow, n(stats.accurateThrows), a.accurateThrow);
+    add("catchableThrow", n(stats.catchableThrows) * n(a.catchableThrow), n(stats.catchableThrows), n(a.catchableThrow));
+    add("turnoverWorthy", n(stats.toWorthyThrows) * a.turnoverWorthyThrow, n(stats.toWorthyThrows), a.turnoverWorthyThrow);
+    add("heroThrow", n(stats.heroThrows) * a.heroThrow, n(stats.heroThrows), a.heroThrow);
+    if (has("heroCatch")) add("heroCatch", n(stats.heroCatches) * a.heroCatch, n(stats.heroCatches), a.heroCatch);
+    if (has("drop")) add("drop", n(stats.drops) * a.drop, n(stats.drops), a.drop);
     if (has("mtf")) {
-      add("missedTackleForced", n(stats.mtf) * a.missedTackleForced);
-      add("rushMtf", n(stats.rushMtf) * n(a.rushMtf));
-      add("recMtf", n(stats.recMtf) * n(a.recMtf));
+      add("missedTackleForced", n(stats.mtf) * a.missedTackleForced, n(stats.mtf), a.missedTackleForced);
+      add("rushMtf", n(stats.rushMtf) * n(a.rushMtf), n(stats.rushMtf), n(a.rushMtf));
+      add("recMtf", n(stats.recMtf) * n(a.recMtf), n(stats.recMtf), n(a.recMtf));
     }
-    add("passAirYds", n(stats.passAirYds) * a.passAirYd);
-    if (has("recAirYd")) add("recAirYds", n(stats.recAirYds) * a.recAirYd);
-    if (has("recYac")) add("recYac", n(stats.recYac) * a.recYacYd);
-    if (has("recYaco")) add("recYaco", n(stats.recYaco) * n(a.recYacoYd));
-    if (has("recFirstDown")) add("recFirstDown", n(stats.recFd) * n(a.recFirstDown));
-    if (has("recFirstRead")) add("recFirstRead", n(stats.firstReadTargets) * n(a.recFirstRead));
+    add("passAirYds", n(stats.passAirYds) * a.passAirYd, n(stats.passAirYds), a.passAirYd);
+    if (has("recAirYd")) add("recAirYds", n(stats.recAirYds) * a.recAirYd, n(stats.recAirYds), a.recAirYd);
+    if (has("recYac")) add("recYac", n(stats.recYac) * a.recYacYd, n(stats.recYac), a.recYacYd);
+    if (has("recYaco")) add("recYaco", n(stats.recYaco) * n(a.recYacoYd), n(stats.recYaco), n(a.recYacoYd));
+    if (has("recFirstDown")) add("recFirstDown", n(stats.recFd) * n(a.recFirstDown), n(stats.recFd), n(a.recFirstDown));
+    if (has("recFirstRead")) add("recFirstRead", n(stats.firstReadTargets) * n(a.recFirstRead), n(stats.firstReadTargets), n(a.recFirstRead));
     if (has("explosivePlay")) {
-      add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay));
-      add("rushExplosive", n(stats.rushExplosives) * n(a.rushExplosive));
-      add("recExplosive", n(stats.recExplosives) * n(a.recExplosive));
+      add("explosivePlay", n(stats.explosivePlays) * n(a.explosivePlay), n(stats.explosivePlays), n(a.explosivePlay));
+      add("rushExplosive", n(stats.rushExplosives) * n(a.rushExplosive), n(stats.rushExplosives), n(a.rushExplosive));
+      add("recExplosive", n(stats.recExplosives) * n(a.recExplosive), n(stats.recExplosives), n(a.recExplosive));
     }
     if (has("separation")) {
-      add("separation", n(stats.sepTotal) * a.sepPoint);
-      add("sepM2", n(stats.sepM2) * n(a.sepM2));
-      add("sepM1", n(stats.sepM1) * n(a.sepM1));
-      add("sepP1", n(stats.sepP1) * n(a.sepP1));
-      add("sepP2", n(stats.sepP2) * n(a.sepP2));
-      add("sepP3", n(stats.sepP3) * n(a.sepP3));
-      add("sepP4", n(stats.sepP4) * n(a.sepP4));
+      add("separation", n(stats.sepTotal) * a.sepPoint, n(stats.sepTotal), a.sepPoint);
+      add("sepM2", n(stats.sepM2) * n(a.sepM2), n(stats.sepM2), n(a.sepM2));
+      add("sepM1", n(stats.sepM1) * n(a.sepM1), n(stats.sepM1), n(a.sepM1));
+      add("sepP1", n(stats.sepP1) * n(a.sepP1), n(stats.sepP1), n(a.sepP1));
+      add("sepP2", n(stats.sepP2) * n(a.sepP2), n(stats.sepP2), n(a.sepP2));
+      add("sepP3", n(stats.sepP3) * n(a.sepP3), n(stats.sepP3), n(a.sepP3));
+      add("sepP4", n(stats.sepP4) * n(a.sepP4), n(stats.sepP4), n(a.sepP4));
     }
     if (has("rushDetail")) {
-      add("rushStuff", n(stats.rushStuffs) * a.rushStuff);
-      add("rushYbc", n(stats.rushYbc) * a.ybcYd);
-      add("rushYaco", n(stats.rushYaco) * a.yacoYd);
+      add("rushStuff", n(stats.rushStuffs) * a.rushStuff, n(stats.rushStuffs), a.rushStuff);
+      add("rushYbc", n(stats.rushYbc) * a.ybcYd, n(stats.rushYbc), a.ybcYd);
+      add("rushYaco", n(stats.rushYaco) * a.yacoYd, n(stats.rushYaco), a.yacoYd);
     }
 
     // ---- passing production from charting/EPA (QB only — see PASSING_POSITIONS;
     //      keeps gadget-play dropbacks off skill players) ----
     if (scoresPassing) {
-      add("deepPassYds", n(stats.passYds5p) * n(a.deepPassYd));
-      add("deepPassFirstDown", n(stats.passFd5p) * n(a.deepPassFirstDown));
-      add("deepPassTd", n(stats.passTd5p) * n(a.deepPassTd));
-      add("sackTaken", n(stats.sacksTaken) * n(a.sackTaken));
-      add("incompletion", n(stats.incompletions) * n(a.incompletion));
+      add("deepPassYds", n(stats.passYds5p) * n(a.deepPassYd), n(stats.passYds5p), n(a.deepPassYd));
+      add("deepPassFirstDown", n(stats.passFd5p) * n(a.deepPassFirstDown), n(stats.passFd5p), n(a.deepPassFirstDown));
+      add("deepPassTd", n(stats.passTd5p) * n(a.deepPassTd), n(stats.passTd5p), n(a.deepPassTd));
+      add("sackTaken", n(stats.sacksTaken) * n(a.sackTaken), n(stats.sacksTaken), n(a.sackTaken));
+      add("incompletion", n(stats.incompletions) * n(a.incompletion), n(stats.incompletions), n(a.incompletion));
       if (n(stats.dropbacks) > 0) {
-        add("epaPerDropback", (n(stats.epaTotal) / n(stats.dropbacks)) * n(a.epaPerDropback));
+        add(
+          "epaPerDropback",
+          (n(stats.epaTotal) / n(stats.dropbacks)) * n(a.epaPerDropback),
+          n(stats.epaTotal) / n(stats.dropbacks),
+          n(a.epaPerDropback),
+        );
       }
-      add("epaTotal", n(stats.epaTotal) * n(a.epaTotal));
+      add("epaTotal", n(stats.epaTotal) * n(a.epaTotal), n(stats.epaTotal), n(a.epaTotal));
     }
   }
 
@@ -269,35 +294,35 @@ export function scoreStatLine(
             : opts.position === "TE"
               ? rules.xfp.te
               : 0;
-    add("xfp", n(stats.xfp) * mult);
+    add("xfp", n(stats.xfp) * mult, n(stats.xfp), mult);
   }
 
   // ---- team coaching staff (optional; stats only exist on COACH rows) ----
   if (rules.coaching) {
     const c = rules.coaching;
-    add("paDropbacks", n(stats.paDropbacks) * c.paDropback);
-    add("motionDropbacks", n(stats.motionDropbacks) * c.motionDropback);
-    add("fourthDownGo", n(stats.fourthDownAttempts) * n(c.fourthDownGo));
-    add("run2ndLong", n(stats.run2ndLong) * n(c.run2ndLong));
-    add("deep2ndShort", n(stats.deep2ndShort) * n(c.deepAtt2ndShort));
-    add("teamWin", n(stats.teamWin) * c.win);
+    add("paDropbacks", n(stats.paDropbacks) * c.paDropback, n(stats.paDropbacks), c.paDropback);
+    add("motionDropbacks", n(stats.motionDropbacks) * c.motionDropback, n(stats.motionDropbacks), c.motionDropback);
+    add("fourthDownGo", n(stats.fourthDownAttempts) * n(c.fourthDownGo), n(stats.fourthDownAttempts), n(c.fourthDownGo));
+    add("run2ndLong", n(stats.run2ndLong) * n(c.run2ndLong), n(stats.run2ndLong), n(c.run2ndLong));
+    add("deep2ndShort", n(stats.deep2ndShort) * n(c.deepAtt2ndShort), n(stats.deep2ndShort), n(c.deepAtt2ndShort));
+    add("teamWin", n(stats.teamWin) * c.win, n(stats.teamWin), c.win);
     if (stats.teamPointsScored !== undefined && stats.teamPointsScored >= 30) {
-      add("scored30Plus", c.score30Bonus);
+      add("scored30Plus", c.score30Bonus, stats.teamPointsScored, null);
     }
   }
 
   // ---- IDP (optional) ----
   if (rules.idp) {
     const i = rules.idp;
-    add("idpSoloTackle", n(stats.idpSoloTackles) * i.soloTackle);
-    add("idpAssist", n(stats.idpAssists) * i.assist);
-    add("idpSack", n(stats.idpSacks) * i.sack);
-    add("idpTfl", n(stats.idpTfl) * i.tfl);
-    add("idpPassDef", n(stats.idpPassDef) * i.passDef);
-    add("idpInt", n(stats.idpInt) * i.int);
-    add("idpFumRec", n(stats.idpFumRec) * i.fumRec);
-    add("idpForcedFumble", n(stats.idpForcedFumbles) * i.forcedFumble);
-    add("idpDefTd", n(stats.idpDefTd) * i.td);
+    add("idpSoloTackle", n(stats.idpSoloTackles) * i.soloTackle, n(stats.idpSoloTackles), i.soloTackle);
+    add("idpAssist", n(stats.idpAssists) * i.assist, n(stats.idpAssists), i.assist);
+    add("idpSack", n(stats.idpSacks) * i.sack, n(stats.idpSacks), i.sack);
+    add("idpTfl", n(stats.idpTfl) * i.tfl, n(stats.idpTfl), i.tfl);
+    add("idpPassDef", n(stats.idpPassDef) * i.passDef, n(stats.idpPassDef), i.passDef);
+    add("idpInt", n(stats.idpInt) * i.int, n(stats.idpInt), i.int);
+    add("idpFumRec", n(stats.idpFumRec) * i.fumRec, n(stats.idpFumRec), i.fumRec);
+    add("idpForcedFumble", n(stats.idpForcedFumbles) * i.forcedFumble, n(stats.idpForcedFumbles), i.forcedFumble);
+    add("idpDefTd", n(stats.idpDefTd) * i.td, n(stats.idpDefTd), i.td);
   }
 
   return finish();

@@ -19,7 +19,20 @@ import { db } from "@/lib/db";
 import { players, playerWeekStats } from "@/lib/db/schema";
 import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
 import { scoreStatLine } from "@/lib/scoring/score-stat-line";
+import { BREAKDOWN_LABELS } from "@/lib/scoring/season-leaders";
 import { statRowToLine } from "@/lib/scoring/stat-row";
+
+/** One scoring component of one week: the raw stat, the league's rate, the points. */
+export interface GameLogDetail {
+  key: string;
+  label: string;
+  /** Raw stat the component came from; null when the engine has no single stat for it. */
+  raw: number | null;
+  /** Points per unit of raw; null for threshold/bracket components (bonuses, 30+ pts). */
+  rate: number | null;
+  /** Exact component points (2 decimals), so raw × rate reconciles. */
+  points: number;
+}
 
 export interface GameLogRow {
   week: number;
@@ -27,6 +40,8 @@ export interface GameLogRow {
   /** Component points aligned with GameLog.cols (incl. "Other" if present). */
   values: number[];
   points: number;
+  /** Every scoring component of the week, in engine order — the full box score. */
+  detail: GameLogDetail[];
 }
 
 export interface GameLog {
@@ -167,7 +182,14 @@ export async function getPlayerLog(
         .reduce((sum, [, v]) => sum + v, 0);
       values.push(round1(rest));
     }
-    return { week: s.week, team: s.team, values, points: round1(r.points) };
+    const detail: GameLogDetail[] = Object.entries(r.breakdown).map(([k, pts]) => ({
+      key: k,
+      label: BREAKDOWN_LABELS[k] ?? LABELS[k] ?? k,
+      raw: r.detail[k]?.raw ?? null,
+      rate: r.detail[k]?.rate ?? null,
+      points: pts,
+    }));
+    return { week: s.week, team: s.team, values, points: round1(r.points), detail };
   });
 
   return {
