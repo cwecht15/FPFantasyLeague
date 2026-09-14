@@ -8,6 +8,7 @@ import { matchups, teams } from "@/lib/db/schema";
 import { getLeagueForUser, getSettings } from "@/lib/leagues/service";
 import { getLineupView, type SlotView } from "@/lib/lineups/service";
 import { fmt1, fmtKick } from "@/lib/format";
+import { PlayerName } from "@/components/player-log";
 
 export default async function MatchupDetailPage({
   params,
@@ -62,7 +63,13 @@ export default async function MatchupDetailPage({
         <div className={`min-w-0 ${mirror ? "text-right" : ""}`}>
           {s.playerName ? (
             <>
-              <div className="truncate text-[13.5px] font-bold">{s.playerName}</div>
+              <div className="truncate text-[13.5px] font-bold">
+                {s.gsisId ? (
+                  <PlayerName slug={slug} gsisId={s.gsisId} name={s.playerName} />
+                ) : (
+                  s.playerName
+                )}
+              </div>
               <div className="text-[11px] text-faint">
                 {s.position} · {s.nflTeam ?? "—"}
                 {s.locked && s.points === null && <span className="ml-2">LOCKED</span>}
