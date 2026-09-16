@@ -19,7 +19,8 @@ names on purpose. Two parts:
   `fpfl-fantasy.fly.dev` host 308-redirects there — see *Custom domain* below).
 - `tools/scoring/` — local Python pipeline (psycopg2, pandas) that reads the **NFL_Data**
   Postgres on this machine (READ-ONLY) and pushes normalized per-player-week stat lines to the
-  app DB. Runs via Windows Task Scheduler (4 weekly tasks named "FPFantasyLeague Push *").
+  app DB. Runs via Windows Task Scheduler (5 weekly tasks named "FPFantasyLeague Push *";
+  the Tue 2:00 PM one exists because MNF charting lands ~1:00 PM ET Tuesday).
 
 The pipeline pushes **raw counting stats**; the app applies each league's `scoring_rules`.
 Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` table.
@@ -44,7 +45,11 @@ Re-scoring is a pure cloud-side recompute, triggered through the `score_dirty` t
    + 4 BENCH — 8 starters, 12 total, **no IR**.
 4. **No live scoring.** Scores exist only after the weekly charting push. Unscored values
    render an em dash `—`, never 0.00 or a spinner. Copy rhythm: *set lineup → slots lock at
-   kickoff → results post Tuesday 6:00 AM ET*.
+   kickoff → results post Tuesday 6:00 AM ET*. Sunday points post at the Tue 6:00 AM push,
+   but **winners/standings wait for a complete week**: `isWeekComplete` (`lib/matchups/
+   rollup.ts`) requires every game in the week to have `player_week_games` rows, so MNF
+   (charted ~1:00 PM ET Tue) finalizes at the Tue 2:00 PM push. Never finalize on the clock
+   alone — doing so flipped a posted 2026 W1 result when KC/DEN landed late.
 5. **Thursday-noon data lock.** A REG week becomes FINAL at 12:00 ET the Thursday after its
    last kickoff. The pipeline refuses to overwrite locked stat lines (`--force` overrides);
    the app never re-scores or re-rolls a locked, already-scored week. See

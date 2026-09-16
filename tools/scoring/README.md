@@ -56,8 +56,17 @@ slice safely):
 |---|---|
 | Fri 06:00 (TNF) | `... push_scores --season 2025 --current` |
 | Mon 06:00 (Sun games) | `... push_scores --season 2025 --current` |
-| Tue 06:00 (MNF) | `... push_scores --season 2025 --current` |
+| Tue 06:00 (Sun results post) | `... push_scores --season 2025 --current` |
+| Tue 14:00 (MNF) | `... push_scores --season 2025 --current` |
 | Wed 06:00 (corrections) | `... push_scores --season 2025 --current` |
+
+**The Tuesday 14:00 run is required, not a safety net.** MNF charting data does
+not land in NFL_Data until roughly 13:00 ET Tuesday, so the 06:00 run always
+misses Monday night. In 2026 W1 that silently pushed a 15-of-16-game week
+(KC/DEN absent) and the rollup finalized it. `isWeekComplete` now refuses to
+mark winners until every game in the week has rows in `player_week_games`, so a
+morning push shows points while matchups stay `in_progress`; the 14:00 push
+completes the week and posts winners and standings.
 
 Point the action at the venv python, e.g.
 `C:\...\tools\scoring\.venv\Scripts\python.exe -m tools.scoring.push_scores ...`

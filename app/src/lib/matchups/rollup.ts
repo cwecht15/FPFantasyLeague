@@ -12,6 +12,7 @@ import {
   lineupSlots,
   matchups,
   nflGames,
+  playerWeekGames,
   playerWeekScores,
   standings,
   teams,
@@ -54,17 +55,36 @@ export async function teamWeekPoints(
   return Number(row?.total ?? 0);
 }
 
-/** A week is over when every game with a known kickoff is comfortably done.
- *  (Stats presence is the gate for scoring; this gates marking winners.) */
+/** A week is over when every game with a known kickoff is comfortably done AND
+ *  every one of those games has charting data pushed. The clock alone is not
+ *  enough: MNF charting does not land until ~1:00 PM ET Tuesday, so a Tuesday
+ *  morning push would otherwise finalize a week with a whole game missing and
+ *  the afternoon push would flip an already-posted result (2026 W1, KC/DEN).
+ *  Points still update on every push — this only gates winners and standings. */
 export async function isWeekComplete(season: number, week: number): Promise<boolean> {
   const games = await db
-    .select({ kickoffAt: nflGames.kickoffAt })
+    .select({ gameId: nflGames.gameId, kickoffAt: nflGames.kickoffAt })
     .from(nflGames)
     .where(and(eq(nflGames.season, season), eq(nflGames.seasonType, REG), eq(nflGames.week, week)));
   if (games.length === 0) return false;
   const SIX_HOURS = 6 * 3600 * 1000;
   const now = Date.now();
-  return games.every((g) => g.kickoffAt !== null && g.kickoffAt.getTime() + SIX_HOURS < now);
+  if (!games.every((g) => g.kickoffAt !== null && g.kickoffAt.getTime() + SIX_HOURS < now)) {
+    return false;
+  }
+
+  const charted = await db
+    .selectDistinct({ gameId: playerWeekGames.gameId })
+    .from(playerWeekGames)
+    .where(
+      and(
+        eq(playerWeekGames.season, season),
+        eq(playerWeekGames.seasonType, REG),
+        eq(playerWeekGames.week, week),
+      ),
+    );
+  const chartedIds = new Set(charted.map((r) => r.gameId));
+  return games.every((g) => chartedIds.has(g.gameId));
 }
 
 /** True if any team in the league has a non-empty lineup for the week. */
