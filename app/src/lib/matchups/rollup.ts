@@ -132,6 +132,23 @@ export async function rollupLeagueWeek(
     }
   }
 
+  // Every team in a matchup gets a lineup before totals: a team whose manager
+  // never opened the site this week inherits its last lineup (carry-over)
+  // instead of silently scoring zero.
+  {
+    const { materializeLineup } = await import("@/lib/lineups/service");
+    const { getSettings } = await import("@/lib/leagues/service");
+    const { rosterTemplate } = await getSettings(leagueId);
+    const teamIds = new Set<number>();
+    for (const m of weekMatchups) {
+      teamIds.add(m.homeTeamId);
+      if (m.awayTeamId) teamIds.add(m.awayTeamId);
+    }
+    for (const teamId of teamIds) {
+      await materializeLineup(teamId, season, week, rosterTemplate);
+    }
+  }
+
   const complete = await isWeekComplete(season, week);
 
   for (const m of weekMatchups) {

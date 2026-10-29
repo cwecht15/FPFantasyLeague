@@ -7,7 +7,7 @@
  * week). Both the incoming and outgoing player must be unlocked.
  */
 
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, lte, max, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -54,7 +54,45 @@ export async function ensureLineup(
   week: number,
   template: RosterTemplate,
 ): Promise<number> {
+  return (await ensureLineupRow(teamId, season, week, template)).id;
+}
+
+/** Ensure + fill a team-week lineup. A lineup that did not exist until now is
+ *  filled in carry-over mode: the team's most recent lineup is copied forward
+ *  regardless of kickoff locks, using the roster as of the week's last kickoff.
+ *  Without this, a manager who set week N and didn't open the site again
+ *  before week N+1's kickoffs got an all-empty starting lineup (nothing locked
+ *  could be auto-started) and scored zero — 2026 weeks 2–7 for several teams. */
+export async function materializeLineup(
+  teamId: number,
+  season: number,
+  week: number,
+  template: RosterTemplate,
+): Promise<number> {
+  const { id, created } = await ensureLineupRow(teamId, season, week, template);
+  if (created) {
+    const [row] = await db
+      .select({ lastKick: max(nflGames.kickoffAt) })
+      .from(nflGames)
+      .where(and(eq(nflGames.season, season), eq(nflGames.seasonType, REG), eq(nflGames.week, week)));
+    const now = new Date();
+    const lastKick = row?.lastKick ?? null;
+    const rosterAsOf = lastKick && lastKick.getTime() < now.getTime() ? lastKick : now;
+    await fillEmptyLineup(teamId, season, week, template, id, { carryOver: { rosterAsOf } });
+  } else {
+    await fillEmptyLineup(teamId, season, week, template, id);
+  }
+  return id;
+}
+
+async function ensureLineupRow(
+  teamId: number,
+  season: number,
+  week: number,
+  template: RosterTemplate,
+): Promise<{ id: number; created: boolean }> {
   return db.transaction(async (tx) => {
+    let created = false;
     let [lineup] = await tx
       .select()
       .from(lineups)
@@ -66,6 +104,7 @@ export async function ensureLineup(
         .values({ teamId, season, week })
         .onConflictDoNothing()
         .returning();
+      if (lineup) created = true;
       if (!lineup) {
         [lineup] = await tx
           .select()
@@ -92,7 +131,7 @@ export async function ensureLineup(
         .values(missing.map((m) => ({ lineupId: lineup.id, ...m })))
         .onConflictDoNothing();
     }
-    return lineup.id;
+    return { id: lineup.id, created };
   });
 }
 
@@ -188,6 +227,7 @@ export async function fillEmptyLineup(
   week: number,
   template: RosterTemplate,
   lineupId: number,
+  opts: { carryOver?: { rosterAsOf: Date } } = {},
 ): Promise<void> {
   const slotRows = await db
     .select()
@@ -197,11 +237,24 @@ export async function fillEmptyLineup(
   const emptySlots = slotRows.filter((s) => s.gsisId === null);
   if (emptySlots.length === 0) return;
 
+  // Carry-over mode (a lineup being created for the first time): rebuild the
+  // lineup the team would have had at kickoff. Kickoff locks are ignored —
+  // nothing here is a manager choice made with hindsight — and the roster is
+  // the one the team held at `rosterAsOf` (the week's last kickoff), so later
+  // waiver adds can't be auto-started into a finished week.
+  const carry = opts.carryOver;
+  const rosterFilter = carry
+    ? and(
+        eq(rosterEntries.teamId, teamId),
+        lte(rosterEntries.acquiredAt, carry.rosterAsOf),
+        or(isNull(rosterEntries.droppedAt), gt(rosterEntries.droppedAt, carry.rosterAsOf)),
+      )
+    : and(eq(rosterEntries.teamId, teamId), isNull(rosterEntries.droppedAt));
   const roster = await db
     .select({ gsisId: rosterEntries.gsisId, position: players.position, entryId: rosterEntries.id })
     .from(rosterEntries)
     .innerJoin(players, eq(players.gsisId, rosterEntries.gsisId))
-    .where(and(eq(rosterEntries.teamId, teamId), isNull(rosterEntries.droppedAt)))
+    .where(rosterFilter)
     .orderBy(rosterEntries.id); // acquisition order ≈ draft order
 
   const used = new Set<string>(
@@ -215,17 +268,27 @@ export async function fillEmptyLineup(
     season,
     week,
   );
-  const locked = (gsisId: string) => isLocked(kicks.get(gsisId));
+  const locked = (gsisId: string) => !carry && isLocked(kicks.get(gsisId));
   const isStarter = (slot: string) => slot !== "BENCH" && slot !== "IR";
 
   const assigned = new Map<number, string>(); // slotId -> gsisId
 
-  // 1) inherit last week's arrangement (same slot/index) into empty slots
+  // 1) inherit the most recent earlier lineup's arrangement (same slot/index)
+  //    into empty slots — not just last week's, so a manager who skipped a
+  //    week still carries forward what they last set.
   if (week > 1) {
     const [prev] = await db
       .select({ id: lineups.id })
       .from(lineups)
-      .where(and(eq(lineups.teamId, teamId), eq(lineups.season, season), eq(lineups.week, week - 1)))
+      .where(
+        and(
+          eq(lineups.teamId, teamId),
+          eq(lineups.season, season),
+          lt(lineups.week, week),
+          sql`exists (select 1 from ${lineupSlots} where ${lineupSlots.lineupId} = ${lineups.id} and ${lineupSlots.gsisId} is not null and ${lineupSlots.slot} not in ('BENCH', 'IR'))`,
+        ),
+      )
+      .orderBy(desc(lineups.week))
       .limit(1);
     if (prev) {
       const prevSlots = await db
@@ -360,8 +423,7 @@ export async function getLineupView(
   week: number,
   template: RosterTemplate,
 ): Promise<{ lineupId: number; slots: SlotView[]; roster: RosteredPlayer[] }> {
-  const lineupId = await ensureLineup(teamId, season, week, template);
-  await fillEmptyLineup(teamId, season, week, template, lineupId);
+  const lineupId = await materializeLineup(teamId, season, week, template);
 
   const slotRows = await db
     .select({

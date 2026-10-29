@@ -36,7 +36,7 @@ async function main() {
 
   const { db, pool } = await import("../src/lib/db");
   const s = await import("../src/lib/db/schema");
-  const { ensureLineup, fillEmptyLineup } = await import("../src/lib/lineups/service");
+  const { materializeLineup } = await import("../src/lib/lineups/service");
   const { getSettings } = await import("../src/lib/leagues/service");
 
   const [league] = await db.select().from(s.leagues).where(eq(s.leagues.slug, slug)).limit(1);
@@ -87,8 +87,7 @@ async function main() {
   for (const t of teams) {
     const before = { empty: await emptyStarters(t.id), unslotted: await unslotted(t.id) };
     if (!dry) {
-      const lineupId = await ensureLineup(t.id, league.season, week, settings.rosterTemplate);
-      await fillEmptyLineup(t.id, league.season, week, settings.rosterTemplate, lineupId);
+      await materializeLineup(t.id, league.season, week, settings.rosterTemplate);
     }
     const after = dry ? before : { empty: await emptyStarters(t.id), unslotted: await unslotted(t.id) };
     console.log(
