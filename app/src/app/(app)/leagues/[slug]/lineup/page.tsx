@@ -52,9 +52,13 @@ export default async function LineupPage({
           <div className="eyebrow">{ctx.myTeam.name}</div>
           <h1 className="display">Week {week} lineup</h1>
           <div className="sub">
-            {isCurrent
-              ? "Slots lock individually at each player's kickoff. Scored after charting — results post Tuesday 6:00 AM ET."
-              : "Final — scored from post-game charting."}
+            {settings.rosterTemplate.bestBall
+              ? isCurrent
+                ? "Best ball — once the week is scored, your highest-scoring lineup counts automatically. Results post Tuesday 6:00 AM ET."
+                : "Final — best ball: your highest-scoring lineup counted."
+              : isCurrent
+                ? "Slots lock individually at each player's kickoff. Scored after charting — results post Tuesday 6:00 AM ET."
+                : "Final — scored from post-game charting."}
           </div>
         </div>
         <div className="flex items-center gap-2.5">

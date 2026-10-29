@@ -110,6 +110,8 @@ export async function rollupLeagueWeek(
   leagueId: number,
   season: number,
   week: number,
+  /** force: re-roll even a locked, final week (one-off admin corrections). */
+  opts: { force?: boolean } = {},
 ): Promise<number> {
   const weekMatchups = await db
     .select()
@@ -117,12 +119,8 @@ export async function rollupLeagueWeek(
     .where(and(eq(matchups.leagueId, leagueId), eq(matchups.season, season), eq(matchups.week, week)));
   if (weekMatchups.length === 0) return 0;
 
-  // A week nobody played (no lineups at all) stays scheduled — prevents
-  // re-scores from finalizing 0-0 ties for weeks a league never reached.
-  if (!(await weekHasLineups(leagueId, season, week))) return 0;
-
   // Locked weeks are FINAL: if every matchup is already decided, leave them.
-  {
+  if (!opts.force) {
     const { isWeekDataLocked } = await import("@/lib/nfl/locks");
     if (
       (await isWeekDataLocked(season, week)) &&
@@ -132,18 +130,31 @@ export async function rollupLeagueWeek(
     }
   }
 
-  // Every team in a matchup gets a lineup before totals: a team whose manager
-  // never opened the site this week inherits its last lineup (carry-over)
-  // instead of silently scoring zero.
-  {
-    const { materializeLineup } = await import("@/lib/lineups/service");
-    const { getSettings } = await import("@/lib/leagues/service");
-    const { rosterTemplate } = await getSettings(leagueId);
-    const teamIds = new Set<number>();
-    for (const m of weekMatchups) {
-      teamIds.add(m.homeTeamId);
-      if (m.awayTeamId) teamIds.add(m.awayTeamId);
+  const { getSettings } = await import("@/lib/leagues/service");
+  const { rosterTemplate } = await getSettings(leagueId);
+  const teamIds = new Set<number>();
+  for (const m of weekMatchups) {
+    teamIds.add(m.homeTeamId);
+    if (m.awayTeamId) teamIds.add(m.awayTeamId);
+  }
+
+  if (rosterTemplate.bestBall) {
+    // Best ball: every team starts its optimal lineup once the week has scores.
+    const { applyBestBallLineup } = await import("@/lib/lineups/best-ball");
+    for (const teamId of teamIds) {
+      await applyBestBallLineup(leagueId, teamId, season, week, rosterTemplate);
     }
+  }
+
+  // A week nobody played (no lineups at all) stays scheduled — prevents
+  // re-scores from finalizing 0-0 ties for weeks a league never reached.
+  if (!(await weekHasLineups(leagueId, season, week))) return 0;
+
+  if (!rosterTemplate.bestBall) {
+    // Every team in a matchup gets a lineup before totals: a team whose
+    // manager never opened the site this week inherits its last lineup
+    // (carry-over) instead of silently scoring zero.
+    const { materializeLineup } = await import("@/lib/lineups/service");
     for (const teamId of teamIds) {
       await materializeLineup(teamId, season, week, rosterTemplate);
     }

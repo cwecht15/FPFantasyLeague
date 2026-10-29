@@ -62,6 +62,10 @@ export const rosterTemplateSchema = z.object({
       }),
     )
     .min(1),
+  /** Best ball: once a week is scored, each team's starters are rewritten to
+   *  its highest-scoring legal lineup from the roster it held that week
+   *  (lib/lineups/best-ball.ts). Manager lineup choices don't affect scoring. */
+  bestBall: z.boolean().optional(),
 });
 export type RosterTemplate = z.infer<typeof rosterTemplateSchema>;
 

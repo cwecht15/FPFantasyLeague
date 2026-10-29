@@ -17,6 +17,7 @@ import {
   createLeague,
   getLeagueBySlug,
   getMyTeam,
+  getSettings,
   joinLeague,
 } from "@/lib/leagues/service";
 import {
@@ -185,7 +186,11 @@ export async function updateRosterAction(
   const slots = Object.entries(parsedCounts.data)
     .filter(([, count]) => count > 0)
     .map(([slot, count]) => ({ slot, count }));
-  const template = rosterTemplateSchema.safeParse({ slots });
+  const current = await getSettings(league.id);
+  const template = rosterTemplateSchema.safeParse({
+    slots,
+    bestBall: current.rosterTemplate.bestBall, // not on this form — keep it
+  });
   if (!template.success) {
     return { error: `Invalid roster: ${template.error.issues[0]?.message}` };
   }
